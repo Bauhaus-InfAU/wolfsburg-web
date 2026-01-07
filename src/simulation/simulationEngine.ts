@@ -1,0 +1,224 @@
+import type { SimulationParams, SimulationStats, LandUse } from '../config/types';
+import { SIMULATION_DEFAULTS, DESTINATION_LAND_USES } from '../config/constants';
+import { BuildingStore } from '../data/buildingStore';
+import { StreetGraph } from '../data/streetGraph';
+import { ODMatrix } from './odMatrix';
+import { Pathfinder } from './pathfinder';
+import { TripGenerator } from './tripGenerator';
+import { createExponentialDecay } from './distanceDecay';
+import { Agent } from '../agents/agent';
+import { AgentPool } from '../agents/agentPool';
+
+export class SimulationEngine {
+  private buildingStore: BuildingStore;
+  private odMatrix: ODMatrix;
+  private pathfinder: Pathfinder;
+  private tripGenerator: TripGenerator;
+  private agentPool: AgentPool;
+
+  private isRunning: boolean = false;
+  private speed: number = 1;
+  private lastTimestamp: number = 0;
+  private animationFrameId: number | null = null;
+
+  private params: SimulationParams;
+  private stats: SimulationStats = {
+    activeAgents: 0,
+    totalTrips: 0,
+    avgDistance: 0,
+  };
+
+  private totalDistanceSum: number = 0;
+
+  // Callbacks
+  public onUpdate: ((agents: Agent[], stats: SimulationStats) => void) | null = null;
+  public onStatsUpdate: ((stats: SimulationStats) => void) | null = null;
+
+  constructor(buildingStore: BuildingStore, streetGraph: StreetGraph) {
+    this.buildingStore = buildingStore;
+    this.odMatrix = new ODMatrix();
+    this.pathfinder = new Pathfinder(streetGraph);
+    this.agentPool = new AgentPool(SIMULATION_DEFAULTS.MAX_ACTIVE_AGENTS);
+
+    // Initialize default params
+    this.params = {
+      spawnRate: 1.0,
+      decayBeta: SIMULATION_DEFAULTS.DECAY_BETA,
+      maxDistance: SIMULATION_DEFAULTS.MAX_TRIP_DISTANCE,
+      speed: 1,
+      enabledLandUses: new Set(DESTINATION_LAND_USES),
+    };
+
+    // Calculate O-D matrix
+    this.recalculateODMatrix();
+
+    // Create trip generator
+    this.tripGenerator = new TripGenerator(
+      this.odMatrix,
+      this.pathfinder,
+      this.buildingStore.residential
+    );
+  }
+
+  recalculateODMatrix(): void {
+    const decayFn = createExponentialDecay(this.params.decayBeta, this.params.maxDistance);
+
+    this.odMatrix.calculate(
+      this.buildingStore.residential,
+      this.buildingStore.destinations,
+      decayFn,
+      this.params.enabledLandUses
+    );
+  }
+
+  start(): void {
+    if (this.isRunning) return;
+    this.isRunning = true;
+    this.lastTimestamp = performance.now();
+    this.animationFrameId = requestAnimationFrame((t) => this.update(t));
+  }
+
+  pause(): void {
+    this.isRunning = false;
+    if (this.animationFrameId !== null) {
+      cancelAnimationFrame(this.animationFrameId);
+      this.animationFrameId = null;
+    }
+  }
+
+  reset(): void {
+    this.pause();
+
+    // Release all agents
+    for (const agent of this.agentPool.getActiveAgents()) {
+      this.agentPool.release(agent);
+    }
+
+    // Reset stats
+    this.stats = {
+      activeAgents: 0,
+      totalTrips: 0,
+      avgDistance: 0,
+    };
+    this.totalDistanceSum = 0;
+
+    // Reset trip generator
+    this.tripGenerator.reset();
+
+    // Notify
+    if (this.onStatsUpdate) {
+      this.onStatsUpdate(this.stats);
+    }
+  }
+
+  setSpeed(speed: number): void {
+    this.speed = speed;
+    this.params.speed = speed;
+  }
+
+  setSpawnRate(rate: number): void {
+    this.params.spawnRate = rate;
+    this.tripGenerator.setSpawnMultiplier(rate);
+  }
+
+  setDecayBeta(beta: number): void {
+    this.params.decayBeta = beta;
+    this.recalculateODMatrix();
+  }
+
+  setMaxDistance(distance: number): void {
+    this.params.maxDistance = distance;
+    this.recalculateODMatrix();
+  }
+
+  toggleLandUse(landUse: LandUse, enabled: boolean): void {
+    if (enabled) {
+      this.params.enabledLandUses.add(landUse);
+    } else {
+      this.params.enabledLandUses.delete(landUse);
+    }
+    this.recalculateODMatrix();
+  }
+
+  private update(timestamp: number): void {
+    if (!this.isRunning) return;
+
+    const deltaMs = timestamp - this.lastTimestamp;
+    this.lastTimestamp = timestamp;
+
+    // Cap delta to avoid huge jumps
+    const cappedDelta = Math.min(deltaMs, 100);
+
+    // Generate new trips
+    if (this.agentPool.getActiveAgents().length < SIMULATION_DEFAULTS.MAX_ACTIVE_AGENTS) {
+      const trips = this.tripGenerator.generateTrips(
+        cappedDelta,
+        SIMULATION_DEFAULTS.TIME_SCALE * this.speed
+      );
+
+      for (const trip of trips) {
+        const agent = this.agentPool.acquire();
+        if (agent) {
+          agent.initialize(trip);
+          this.stats.totalTrips++;
+          this.totalDistanceSum += trip.path.reduce((sum, _, i, arr) => {
+            if (i === 0) return 0;
+            const [lng1, lat1] = arr[i - 1];
+            const [lng2, lat2] = arr[i];
+            const dx = lng2 - lng1;
+            const dy = lat2 - lat1;
+            return sum + Math.sqrt(dx * dx + dy * dy) * 111000; // Rough conversion to meters
+          }, 0);
+        }
+      }
+    }
+
+    // Update agents
+    const agents = this.agentPool.getActiveAgents();
+    const agentsToRelease: Agent[] = [];
+
+    for (const agent of agents) {
+      const stillActive = agent.update(cappedDelta, this.speed);
+      if (!stillActive) {
+        agentsToRelease.push(agent);
+      }
+    }
+
+    // Release completed agents
+    for (const agent of agentsToRelease) {
+      this.agentPool.release(agent);
+    }
+
+    // Update stats
+    this.stats.activeAgents = this.agentPool.getActiveAgents().length;
+    this.stats.avgDistance =
+      this.stats.totalTrips > 0 ? Math.round(this.totalDistanceSum / this.stats.totalTrips) : 0;
+
+    // Notify callbacks
+    if (this.onUpdate) {
+      this.onUpdate(this.agentPool.getActiveAgents(), this.stats);
+    }
+    if (this.onStatsUpdate) {
+      this.onStatsUpdate(this.stats);
+    }
+
+    // Continue loop
+    this.animationFrameId = requestAnimationFrame((t) => this.update(t));
+  }
+
+  getAgents(): Agent[] {
+    return this.agentPool.getActiveAgents();
+  }
+
+  getStats(): SimulationStats {
+    return { ...this.stats };
+  }
+
+  getParams(): SimulationParams {
+    return { ...this.params };
+  }
+
+  get running(): boolean {
+    return this.isRunning;
+  }
+}

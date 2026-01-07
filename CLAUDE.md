@@ -1,0 +1,63 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Build Commands
+
+```bash
+npm run dev      # Start development server with hot reload
+npm run build    # TypeScript compile + Vite production build
+npm run preview  # Preview the production build
+```
+
+No test framework is configured.
+
+## Architecture
+
+This is a browser-based pedestrian flow simulation for the city of Weimar, built with TypeScript and Vite. The simulation models trips from residential buildings to various destination types using an origin-destination matrix with distance decay.
+
+### Core Components
+
+**Data Layer** (`src/data/`)
+- `BuildingStore` - Loads and indexes building GeoJSON, categorizes by land use. Uses RBush for spatial queries.
+- `StreetGraph` - Builds a graph from street GeoJSON for pathfinding. Nodes are coordinate-keyed, edges are bidirectional.
+
+**Simulation Layer** (`src/simulation/`)
+- `SimulationEngine` - Main loop using `requestAnimationFrame`. Manages agent spawning, updates, and lifecycle.
+- `ODMatrix` - Computes origin-destination probabilities using exponential distance decay and land use weights.
+- `Pathfinder` - A* algorithm over the street graph with LRU caching. Falls back to direct paths when graph unavailable.
+- `TripGenerator` - Probabilistically generates trips based on residential building floors and O-D matrix.
+
+**Agent System** (`src/agents/`)
+- `Agent` - State machine: `toDestination` → `atDestination` → `returning` → `completed`. Interpolates position along path waypoints.
+- `AgentPool` - Object pool pattern to avoid allocation during simulation.
+
+**Visualization** (`src/visualization/`)
+- `MapView` - Dual-canvas system (static layer for buildings/streets, overlay for agents). Handles pan/zoom transforms.
+- `AgentRenderer` - Draws agents on the overlay canvas, colored by destination land use.
+- `buildingLayer`/`streetLayer` - Render GeoJSON features to canvas.
+
+### Data Flow
+
+1. GeoJSON files loaded from `public/data/` (weimar-buildings.geojson, weimar-streets.geojson)
+2. Buildings indexed by land use; street graph constructed
+3. O-D matrix calculated from residential→destination pairs with decay function
+4. Simulation loop spawns agents, each following A* path through street network
+5. Agents rendered each frame on separate canvas layer
+
+### Coordinate System
+
+Coordinates are in degrees (WGS84) - the Heron plugin converts Rhino's meter coordinates to geographic coordinates during GeoJSON export. Distance calculations internally convert degrees to meters using 1° ≈ 111km. The coordinate precision constant (`COORD_PRECISION = 6`) provides ~10cm precision for node merging.
+
+### Key Configuration
+
+See `src/config/constants.ts` for tunable parameters:
+- `WALKING_SPEED`: 1.4 m/s
+- `DECAY_BETA`: 0.002 (controls distance penalty)
+- `TIME_SCALE`: 5 (1 real second = 5 simulated seconds)
+- `MAX_ACTIVE_AGENTS`: 5000
+- `LAND_USE_WEIGHTS`: Attraction weights by destination type
+
+### Land Use Types
+
+16 land use categories defined in `src/config/types.ts`. Residential buildings generate trips; all others are potential destinations weighted by `LAND_USE_WEIGHTS`.

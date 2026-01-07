@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Pedestrian Flow</title>
+  </head>
+  <body>
+    <div id="app">
+      <div id="map"></div>
+      <div id="control-panel">
+        <h2>Pedestrian Flow</h2>
+
+        <div class="control-section">
+          <h3>Playback</h3>
+          <div class="button-group">
+            <button id="btn-play">Play</button>
+            <button id="btn-pause" disabled>Pause</button>
+            <button id="btn-reset">Reset</button>
+          </div>
+          <div class="slider-group">
+            <label>Speed: <span id="speed-value">1x</span></label>
+            <input type="range" id="speed-slider" min="1" max="10" value="1" />
+          </div>
+        </div>
+
+        <div class="control-section">
+          <h3>Simulation Parameters</h3>
+          <div class="slider-group">
+            <label>Spawn Rate: <span id="spawn-value">1.0</span></label>
+            <input type="range" id="spawn-slider" min="0.1" max="5" step="0.1" value="1" />
+          </div>
+          <div class="slider-group">
+            <label>Distance Decay (β): <span id="decay-value">0.002</span></label>
+            <input type="range" id="decay-slider" min="0.0005" max="0.01" step="0.0005" value="0.002" />
+          </div>
+          <div class="slider-group">
+            <label>Max Distance (m): <span id="distance-value">2000</span></label>
+            <input type="range" id="distance-slider" min="500" max="3000" step="100" value="2000" />
+          </div>
+        </div>
+
+        <div class="control-section">
+          <h3>Land Use Destinations</h3>
+          <div id="landuse-toggles" class="checkbox-grid">
+            <!-- Populated by JS -->
+          </div>
+        </div>
+
+        <div class="control-section">
+          <h3>Statistics</h3>
+          <div id="stats">
+            <div data-label="Agents"><span id="stat-agents">0</span></div>
+            <div data-label="Trips"><span id="stat-trips">0</span></div>
+          </div>
+        </div>
+
+        <div class="control-section legend">
+          <h3>Legend</h3>
+          <div id="legend-content">
+            <!-- Populated by JS -->
+          </div>
+        </div>
+      </div>
+      <div id="loading">
+        <div class="loading-content">
+          <div class="spinner"></div>
+          <div id="loading-text">Loading...</div>
+        </div>
+      </div>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
