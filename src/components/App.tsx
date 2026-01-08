@@ -7,12 +7,12 @@ import { PathPreview } from './PathPreview';
 export function App() {
   return (
     <div className="flex h-screen w-screen max-md:flex-col">
-      <DataPanel />
+      <ControlPanel />
       <div className="flex-1 h-full relative">
         <MapCanvas />
         <PathPreview />
       </div>
-      <ControlPanel />
+      <DataPanel />
       <LoadingOverlay />
     </div>
   );

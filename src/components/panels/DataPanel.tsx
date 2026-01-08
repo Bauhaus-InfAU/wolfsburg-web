@@ -7,6 +7,7 @@ import { TopStreets } from './charts/TopStreets';
 import { NetworkConcentration } from './charts/NetworkConcentration';
 import { ServiceDistances } from './charts/ServiceDistances';
 import { WalkabilityScore } from './charts/WalkabilityScore';
+import { LowWalkability } from './charts/LowWalkability';
 
 const MIN_WIDTH = 240;
 const MAX_WIDTH = 420;
@@ -17,7 +18,7 @@ export function DataPanel() {
   const [width, setWidth] = useState(DEFAULT_WIDTH);
   const [isResizing, setIsResizing] = useState(false);
 
-  const { isLoading } = useSimulation();
+  const { isLoading, getResidentialCount, getLowWalkabilityCount } = useSimulation();
   const {
     topStreets,
     networkConcentration,
@@ -35,7 +36,7 @@ export function DataPanel() {
     const startWidth = width;
 
     const handleMouseMove = (e: MouseEvent) => {
-      const delta = e.clientX - startX;
+      const delta = startX - e.clientX;
       const newWidth = Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, startWidth + delta));
       setWidth(newWidth);
     };
@@ -58,7 +59,7 @@ export function DataPanel() {
     <div
       className={cn(
         "relative h-full p-3 max-md:p-2 max-md:w-full max-md:h-auto max-md:absolute max-md:z-20 transition-transform duration-300 ease-in-out",
-        isCollapsed && "-translate-x-full max-md:translate-x-0 max-md:-translate-y-full"
+        isCollapsed && "translate-x-full max-md:translate-x-0 max-md:-translate-y-full"
       )}
       style={{ width: `${width}px` }}
     >
@@ -66,15 +67,15 @@ export function DataPanel() {
       <button
         onClick={() => setIsCollapsed(!isCollapsed)}
         className={cn(
-          "absolute top-1/2 -translate-y-1/2 z-30 bg-card border border-border rounded-r-lg p-1.5 shadow-sm hover:bg-accent/50 transition-colors max-md:hidden",
-          isCollapsed ? "right-0 translate-x-full" : "right-0 translate-x-[calc(100%-1px)]"
+          "absolute top-1/2 -translate-y-1/2 z-30 bg-card border border-border rounded-l-lg p-1.5 shadow-sm hover:bg-accent/50 transition-colors max-md:hidden",
+          isCollapsed ? "left-0 -translate-x-full" : "left-0 -translate-x-[calc(100%-1px)]"
         )}
         title={isCollapsed ? "Show insights" : "Hide insights"}
       >
         <ChevronRight
           className={cn(
             "h-4 w-4 text-muted-foreground transition-transform duration-200",
-            !isCollapsed && "rotate-180"
+            isCollapsed && "rotate-180"
           )}
         />
       </button>
@@ -98,7 +99,7 @@ export function DataPanel() {
         {/* Resize Handle */}
         <div
           className={cn(
-            "absolute right-0 top-0 bottom-0 w-3 cursor-col-resize z-20 flex items-center justify-center group max-md:hidden",
+            "absolute left-0 top-0 bottom-0 w-3 cursor-col-resize z-20 flex items-center justify-center group max-md:hidden",
             isResizing && "bg-primary/10"
           )}
           onMouseDown={handleMouseDown}
@@ -135,6 +136,7 @@ export function DataPanel() {
               <TopStreets
                 streets={topStreets}
                 maxCount={maxStreetCount}
+                totalSegments={totalSegments}
               />
             </div>
           </div>
@@ -144,7 +146,13 @@ export function DataPanel() {
             <div className="text-[9px] uppercase tracking-widest text-muted-foreground px-1 mb-2">
               Accessibility
             </div>
-            <ServiceDistances distances={serviceDistances} />
+            <div className="space-y-2">
+              <ServiceDistances distances={serviceDistances} />
+              <LowWalkability
+                totalResidential={getResidentialCount()}
+                highlightedCount={getLowWalkabilityCount()}
+              />
+            </div>
           </div>
         </div>
       </div>

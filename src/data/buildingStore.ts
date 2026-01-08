@@ -240,8 +240,8 @@ export class BuildingStore {
     }
 
     return [
-      [minLat, minLng],
-      [maxLat, maxLng],
+      [minLng, minLat],
+      [maxLng, maxLat],
     ];
   }
 

@@ -40,6 +40,7 @@ export function useUrbanInsights(): UrbanInsights {
     getAverageDistancesByLandUse,
     enabledLandUses,
     isRunning,
+    topStreetsPercent,
   } = useSimulation();
 
   // Force periodic refresh while simulation is running
@@ -63,8 +64,9 @@ export function useUrbanInsights(): UrbanInsights {
     // Sort by count descending
     const sortedSegments = [...segments].sort((a, b) => b.count - a.count);
 
-    // Top 5 streets
-    const topStreets: TopStreet[] = sortedSegments.slice(0, 5).map(s => ({
+    // Dynamic top streets based on percentage
+    const topCount = Math.max(1, Math.ceil(sortedSegments.length * topStreetsPercent / 100));
+    const topStreets: TopStreet[] = sortedSegments.slice(0, topCount).map(s => ({
       from: s.from,
       to: s.to,
       count: s.count,
@@ -121,5 +123,5 @@ export function useUrbanInsights(): UrbanInsights {
       serviceDistances,
       walkabilityScore,
     };
-  }, [getStreetUsage, getStreetUsageMax, getAverageDistancesByLandUse, enabledLandUses, refreshTick]);
+  }, [getStreetUsage, getStreetUsageMax, getAverageDistancesByLandUse, enabledLandUses, topStreetsPercent, refreshTick]);
 }

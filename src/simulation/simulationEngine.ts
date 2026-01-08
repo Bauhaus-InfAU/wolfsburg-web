@@ -19,7 +19,7 @@ export class SimulationEngine {
   private usageTracker: StreetUsageTracker;
 
   private isRunning: boolean = false;
-  private speed: number = 1;
+  private speed: number = 5;
   private lastTimestamp: number = 0;
   private animationFrameId: number | null = null;
 

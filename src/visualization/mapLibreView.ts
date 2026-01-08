@@ -156,7 +156,9 @@ export class MapLibreView {
    * Fit map to data bounds with padding.
    */
   fitBounds(bounds: [[number, number], [number, number]]): void {
-    this.map.fitBounds(bounds, { padding: 50 });
+    this.map.fitBounds(bounds, {
+      padding: { top: 50, bottom: 50, left: 50, right: 50 },
+    });
   }
 
   /**
@@ -458,6 +460,57 @@ export class MapLibreView {
         coordinates: [segment.from, segment.to],
       },
     }));
+
+    source.setData({
+      type: 'FeatureCollection',
+      features,
+    });
+  }
+
+  /**
+   * Add low walkability buildings source and layer.
+   */
+  addLowWalkabilityLayer(): void {
+    this.map.addSource('low-walkability-buildings', {
+      type: 'geojson',
+      data: {
+        type: 'FeatureCollection',
+        features: [],
+      },
+    });
+
+    // Glow layer for low walkability buildings (red highlight)
+    this.map.addLayer({
+      id: 'low-walkability-glow',
+      type: 'fill-extrusion',
+      source: 'low-walkability-buildings',
+      layout: {
+        'visibility': 'none',
+      },
+      paint: {
+        'fill-extrusion-color': '#ef4444', // Red for poor accessibility
+        'fill-extrusion-height': [
+          '*',
+          ['to-number', ['coalesce', ['get', 'Height'], '5']],
+          1.02, // Slightly taller to appear above other buildings
+        ],
+        'fill-extrusion-base': 0,
+        'fill-extrusion-opacity': 0.85,
+      },
+    });
+  }
+
+  /**
+   * Update low walkability buildings layer.
+   */
+  updateLowWalkabilityBuildings(buildingIds: string[], buildingData: BuildingCollection): void {
+    const source = this.map.getSource('low-walkability-buildings') as maplibregl.GeoJSONSource;
+    if (!source) return;
+
+    const idSet = new Set(buildingIds);
+    const features = buildingData.features.filter(
+      (f) => idSet.has(f.properties['Building ID'] as string)
+    );
 
     source.setData({
       type: 'FeatureCollection',

@@ -9,6 +9,7 @@ import { AgentRenderer } from '../visualization/agentRenderer';
 import { loadBuildings, loadStreets } from '../data/dataLoader';
 import { createLegend } from '../visualization/buildingLayer';
 import type { SegmentUsage } from '../data/StreetUsageTracker';
+import { calculateBuildingWalkability, getLowestWalkabilityBuildings, type BuildingWalkabilityScore } from '../data/buildingWalkability';
 
 interface SimulationContextValue {
   // State
@@ -20,6 +21,9 @@ interface SimulationContextValue {
   showUsageHeatmap: boolean;
   showAgents: boolean;
   showTopStreets: boolean;
+  topStreetsPercent: number;
+  showLowWalkability: boolean;
+  lowWalkabilityPercent: number;
   speed: number;
   spawnRate: number;
 
@@ -39,6 +43,13 @@ interface SimulationContextValue {
   setShowUsageHeatmap: (show: boolean) => void;
   setShowAgents: (show: boolean) => void;
   setShowTopStreets: (show: boolean) => void;
+  setTopStreetsPercent: (percent: number) => void;
+  setShowLowWalkability: (show: boolean) => void;
+  setLowWalkabilityPercent: (percent: number) => void;
+
+  // Building walkability data
+  getResidentialCount: () => number;
+  getLowWalkabilityCount: () => number;
 
   // Path preview actions
   setShowPathPreview: (show: boolean) => void;
@@ -73,7 +84,11 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
   const [showUsageHeatmap, setShowUsageHeatmap] = useState(false);
   const [showAgents, setShowAgents] = useState(true);
   const [showTopStreets, setShowTopStreets] = useState(false);
-  const [speed, setSpeedState] = useState(1);
+  const [topStreetsPercent, setTopStreetsPercent] = useState(10);
+  const [showLowWalkability, setShowLowWalkability] = useState(false);
+  const [lowWalkabilityPercent, setLowWalkabilityPercent] = useState(10);
+  const [buildingWalkabilityScores, setBuildingWalkabilityScores] = useState<Map<string, BuildingWalkabilityScore>>(new Map());
+  const [speed, setSpeedState] = useState(5);
   const [spawnRate, setSpawnRateState] = useState(1.0);
 
   // Path preview state
@@ -87,6 +102,7 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
   const mapViewRef = useRef<MapLibreView | null>(null);
   const agentRendererRef = useRef<AgentRenderer | null>(null);
   const buildingStoreRef = useRef<BuildingStore | null>(null);
+  const enrichedBuildingsRef = useRef<BuildingCollection | null>(null);
   const initializedRef = useRef(false);
   const lastHeatmapUpdateRef = useRef<number>(0);
   const HEATMAP_UPDATE_INTERVAL = 1000; // ms (reduced frequency for performance)
@@ -176,7 +192,22 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
 
       // Enrich building GeoJSON with primaryLandUse for data-driven styling
       const enrichedBuildings = enrichBuildingGeoJSON(buildingData, buildingStore);
+      enrichedBuildingsRef.current = enrichedBuildings;
+
+      // Add low walkability layer (before buildings so it appears underneath)
+      mapView.addLowWalkabilityLayer();
+
       mapView.addBuildingsLayer(enrichedBuildings);
+
+      // Calculate per-building walkability scores
+      setLoadingStatus('Calculating walkability...');
+      const walkabilityScores = calculateBuildingWalkability(
+        buildingStore.residential,
+        buildingStore.destinations,
+        new Set(DESTINATION_LAND_USES)
+      );
+      setBuildingWalkabilityScores(walkabilityScores);
+      console.log(`Calculated walkability for ${walkabilityScores.size} buildings`);
 
       // Fit map to data bounds
       const bounds = buildingStore.getBounds();
@@ -228,7 +259,8 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
           if (now - lastHeatmapUpdateRef.current > HEATMAP_UPDATE_INTERVAL) {
             const segments = engine.getUsageTracker().getSegmentUsage();
             const sorted = [...segments].sort((a, b) => b.count - a.count);
-            mapView.updateTopStreets(sorted.slice(0, 5));
+            const topCount = Math.max(1, Math.ceil(sorted.length * topStreetsPercent / 100));
+            mapView.updateTopStreets(sorted.slice(0, topCount));
           }
         }
       };
@@ -254,7 +286,7 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
       console.error('Error initializing simulation:', error);
       setLoadingStatus(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
-  }, [enrichBuildingGeoJSON, showAgents, showUsageHeatmap, showTopStreets]);
+  }, [enrichBuildingGeoJSON, showAgents, showUsageHeatmap, showTopStreets, topStreetsPercent]);
 
   // Update engine callbacks and view change handler when display toggles change
   useEffect(() => {
@@ -287,7 +319,8 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
         if (now - lastHeatmapUpdateRef.current > HEATMAP_UPDATE_INTERVAL) {
           const segments = engine.getUsageTracker().getSegmentUsage();
           const sorted = [...segments].sort((a, b) => b.count - a.count);
-          mapView.updateTopStreets(sorted.slice(0, 5));
+          const topCount = Math.max(1, Math.ceil(sorted.length * topStreetsPercent / 100));
+          mapView.updateTopStreets(sorted.slice(0, topCount));
         }
       }
     };
@@ -305,7 +338,7 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
     } else {
       mapView.clearAgentCanvas();
     }
-  }, [showAgents, showUsageHeatmap, showTopStreets]);
+  }, [showAgents, showUsageHeatmap, showTopStreets, topStreetsPercent]);
 
   // Update MapLibre layer visibility when toggles change
   useEffect(() => {
@@ -333,13 +366,30 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
     mapView.setLayerVisibility('top-streets-glow', showTopStreets);
     mapView.setLayerVisibility('top-streets-core', showTopStreets);
 
-    // Update top streets data immediately when toggling on
+    // Update top streets data immediately when toggling on or changing percent
     if (showTopStreets && engine) {
       const segments = engine.getUsageTracker().getSegmentUsage();
       const sorted = [...segments].sort((a, b) => b.count - a.count);
-      mapView.updateTopStreets(sorted.slice(0, 5));
+      const topCount = Math.max(1, Math.ceil(sorted.length * topStreetsPercent / 100));
+      mapView.updateTopStreets(sorted.slice(0, topCount));
     }
-  }, [showTopStreets, isLoading]);
+  }, [showTopStreets, topStreetsPercent, isLoading]);
+
+  // Update low walkability layer visibility
+  useEffect(() => {
+    const mapView = mapViewRef.current;
+    const enrichedBuildings = enrichedBuildingsRef.current;
+    if (!mapView || isLoading) return;
+
+    // Toggle low walkability layer visibility
+    mapView.setLayerVisibility('low-walkability-glow', showLowWalkability);
+
+    // Update low walkability buildings when toggling on or changing percent
+    if (showLowWalkability && buildingWalkabilityScores.size > 0 && enrichedBuildings) {
+      const lowestIds = getLowestWalkabilityBuildings(buildingWalkabilityScores, lowWalkabilityPercent);
+      mapView.updateLowWalkabilityBuildings(lowestIds, enrichedBuildings);
+    }
+  }, [showLowWalkability, lowWalkabilityPercent, buildingWalkabilityScores, isLoading]);
 
   // Update path preview layer visibility
   useEffect(() => {
@@ -412,6 +462,15 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
     return engineRef.current?.getAverageDistancesByLandUse() || new Map();
   }, []);
 
+  const getResidentialCount = useCallback((): number => {
+    return buildingStoreRef.current?.residential.length || 0;
+  }, []);
+
+  const getLowWalkabilityCount = useCallback((): number => {
+    if (buildingWalkabilityScores.size === 0) return 0;
+    return Math.max(1, Math.ceil(buildingWalkabilityScores.size * lowWalkabilityPercent / 100));
+  }, [buildingWalkabilityScores, lowWalkabilityPercent]);
+
   // Path preview methods
   const findPath = useCallback((from: [number, number], to: [number, number]): Path | null => {
     return engineRef.current?.findPath(from, to) ?? null;
@@ -430,6 +489,9 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
     showUsageHeatmap,
     showAgents,
     showTopStreets,
+    topStreetsPercent,
+    showLowWalkability,
+    lowWalkabilityPercent,
     speed,
     spawnRate,
     showPathPreview,
@@ -445,6 +507,11 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
     setShowUsageHeatmap,
     setShowAgents,
     setShowTopStreets,
+    setTopStreetsPercent,
+    setShowLowWalkability,
+    setLowWalkabilityPercent,
+    getResidentialCount,
+    getLowWalkabilityCount,
     setShowPathPreview,
     setPathPreviewStart,
     setPathPreviewEnd,

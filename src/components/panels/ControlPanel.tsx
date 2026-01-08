@@ -25,7 +25,7 @@ export function ControlPanel() {
     const startWidth = width;
 
     const handleMouseMove = (e: MouseEvent) => {
-      const delta = startX - e.clientX;
+      const delta = e.clientX - startX;
       const newWidth = Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, startWidth + delta));
       setWidth(newWidth);
     };
@@ -49,7 +49,7 @@ export function ControlPanel() {
         {/* Resize Handle */}
         <div
           className={cn(
-            "absolute left-0 top-0 bottom-0 w-3 cursor-col-resize z-20 flex items-center justify-center group max-md:hidden",
+            "absolute right-0 top-0 bottom-0 w-3 cursor-col-resize z-20 flex items-center justify-center group max-md:hidden",
             isResizing && "bg-primary/10"
           )}
           onMouseDown={handleMouseDown}
@@ -60,8 +60,9 @@ export function ControlPanel() {
           )} />
         </div>
 
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto custom-scrollbar">
+        {/* Content - direction:rtl moves scrollbar to left */}
+        <div className="flex-1 overflow-y-auto custom-scrollbar" style={{ direction: 'rtl' }}>
+          <div style={{ direction: 'ltr' }}>
           {/* Header */}
           <div className="sticky top-0 bg-card/95 backdrop-blur-sm z-10 px-5 py-4 border-b border-border">
             <h1 className="text-sm font-semibold text-foreground">
@@ -73,38 +74,41 @@ export function ControlPanel() {
           </div>
 
           <div className="p-4 space-y-1">
-            {/* Controls Group */}
-            <SectionGroup title="Controls">
-              <CollapsibleSection title="Playback" defaultOpen>
-                <PlaybackControls />
-              </CollapsibleSection>
-
-              <CollapsibleSection title="Parameters" defaultOpen>
-                <SimulationParams />
-              </CollapsibleSection>
-            </SectionGroup>
-
-            {/* Filters Group */}
-            <SectionGroup title="Filters">
-              <CollapsibleSection title="Land Use Types" defaultOpen>
-                <LandUseToggles />
-              </CollapsibleSection>
-
-              <CollapsibleSection title="Display Options" defaultOpen>
-                <VisualizationToggles />
-              </CollapsibleSection>
-            </SectionGroup>
-
-            {/* Info Group */}
-            <SectionGroup title="Information">
-              <CollapsibleSection title="Statistics" defaultOpen>
+            {/* Playback & Stats */}
+            <CollapsibleSection title="Playback" defaultOpen>
+              <PlaybackControls />
+              <div className="mt-3 pt-3 border-t border-border">
                 <StatsDisplay />
-              </CollapsibleSection>
+              </div>
+            </CollapsibleSection>
 
-              <CollapsibleSection title="Legend" defaultOpen={false}>
-                <Legend />
-              </CollapsibleSection>
-            </SectionGroup>
+            {/* Display Options */}
+            <CollapsibleSection title="Display Options" defaultOpen>
+              <VisualizationToggles />
+            </CollapsibleSection>
+
+            {/* Parameters */}
+            <CollapsibleSection title="Parameters" defaultOpen>
+              <SimulationParams />
+            </CollapsibleSection>
+
+            {/* Filters */}
+            <CollapsibleSection title="Land Use Types" defaultOpen>
+              <LandUseToggles />
+            </CollapsibleSection>
+
+            {/* Legend */}
+            <CollapsibleSection title="Legend" defaultOpen={false}>
+              <Legend />
+            </CollapsibleSection>
+
+            {/* About */}
+            <CollapsibleSection title="About" defaultOpen={false}>
+              <p className="text-[11px] text-muted-foreground leading-relaxed">
+                This simulation models pedestrian flows in Weimar using an origin-destination gravity model calibrated with MiD 2023 mobility data. Residents generate trips to nearby services based on distance decay functions, with agents following A* pathfinding through the street network.
+              </p>
+            </CollapsibleSection>
+          </div>
           </div>
         </div>
       </div>
