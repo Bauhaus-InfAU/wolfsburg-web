@@ -292,4 +292,12 @@ export class SimulationEngine {
   getAverageDistancesByLandUse(): Map<LandUse, { avgDistance: number; count: number }> {
     return this.odMatrix.getAverageDistancesByLandUse();
   }
+
+  /**
+   * Find shortest path between two coordinates.
+   * Exposed for path preview feature.
+   */
+  findPath(from: [number, number], to: [number, number]) {
+    return this.pathfinder.findPath(from, to);
+  }
 }

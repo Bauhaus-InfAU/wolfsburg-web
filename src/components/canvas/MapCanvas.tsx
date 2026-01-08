@@ -33,7 +33,7 @@ export function MapCanvas() {
     <div
       id="map"
       ref={containerRef}
-      className="flex-1 h-full bg-background relative"
+      className="w-full h-full bg-background"
     />
   );
 }

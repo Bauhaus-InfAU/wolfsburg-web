@@ -283,6 +283,85 @@ export class MapLibreView {
   }
 
   /**
+   * Add path preview source and layers for shortest path visualization.
+   */
+  addPathPreviewLayer(): void {
+    this.map.addSource('path-preview', {
+      type: 'geojson',
+      data: {
+        type: 'FeatureCollection',
+        features: [],
+      },
+    });
+
+    // Glow layer (wider, semi-transparent)
+    this.map.addLayer({
+      id: 'path-preview-glow',
+      type: 'line',
+      source: 'path-preview',
+      layout: {
+        'line-cap': 'round',
+        'line-join': 'round',
+        'visibility': 'none',
+      },
+      paint: {
+        'line-color': '#f57f5b',
+        'line-width': 10,
+        'line-opacity': 0.4,
+      },
+    });
+
+    // Core line layer
+    this.map.addLayer({
+      id: 'path-preview-line',
+      type: 'line',
+      source: 'path-preview',
+      layout: {
+        'line-cap': 'round',
+        'line-join': 'round',
+        'visibility': 'none',
+      },
+      paint: {
+        'line-color': '#f57f5b',
+        'line-width': 3,
+      },
+    });
+  }
+
+  /**
+   * Update the path preview line data.
+   */
+  updatePathPreviewLine(points: [number, number][]): void {
+    const source = this.map.getSource('path-preview') as maplibregl.GeoJSONSource;
+    if (!source) return;
+
+    if (points.length < 2) {
+      source.setData({ type: 'FeatureCollection', features: [] });
+      return;
+    }
+
+    source.setData({
+      type: 'FeatureCollection',
+      features: [{
+        type: 'Feature',
+        properties: {},
+        geometry: {
+          type: 'LineString',
+          coordinates: points,
+        },
+      }],
+    });
+  }
+
+  /**
+   * Set path preview layer visibility.
+   */
+  setPathPreviewVisibility(visible: boolean): void {
+    this.setLayerVisibility('path-preview-glow', visible);
+    this.setLayerVisibility('path-preview-line', visible);
+  }
+
+  /**
    * Add buildings source and layers with data-driven styling.
    */
   addBuildingsLayer(buildingData: BuildingCollection): void {

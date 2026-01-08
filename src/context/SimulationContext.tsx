@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useRef, useCallback, useEffect } from 'react';
-import type { LandUse, SimulationStats, BuildingCollection, StreetCollection } from '../config/types';
+import type { LandUse, SimulationStats, BuildingCollection, StreetCollection, Path } from '../config/types';
 import { DESTINATION_LAND_USES } from '../config/constants';
 import { SimulationEngine } from '../simulation/simulationEngine';
 import { BuildingStore } from '../data/buildingStore';
@@ -23,6 +23,12 @@ interface SimulationContextValue {
   speed: number;
   spawnRate: number;
 
+  // Path preview state
+  showPathPreview: boolean;
+  pathPreviewStart: [number, number] | null;
+  pathPreviewEnd: [number, number] | null;
+  pathPreviewPath: Path | null;
+
   // Actions
   play: () => void;
   pause: () => void;
@@ -33,6 +39,15 @@ interface SimulationContextValue {
   setShowUsageHeatmap: (show: boolean) => void;
   setShowAgents: (show: boolean) => void;
   setShowTopStreets: (show: boolean) => void;
+
+  // Path preview actions
+  setShowPathPreview: (show: boolean) => void;
+  setPathPreviewStart: (point: [number, number] | null) => void;
+  setPathPreviewEnd: (point: [number, number] | null) => void;
+  findPath: (from: [number, number], to: [number, number]) => Path | null;
+
+  // Map access
+  getMapView: () => MapLibreView | null;
 
   // Map initialization and resize
   initializeMap: (containerId: string) => void;
@@ -60,6 +75,12 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
   const [showTopStreets, setShowTopStreets] = useState(false);
   const [speed, setSpeedState] = useState(1);
   const [spawnRate, setSpawnRateState] = useState(1.0);
+
+  // Path preview state
+  const [showPathPreview, setShowPathPreview] = useState(false);
+  const [pathPreviewStart, setPathPreviewStart] = useState<[number, number] | null>(null);
+  const [pathPreviewEnd, setPathPreviewEnd] = useState<[number, number] | null>(null);
+  const [pathPreviewPath, setPathPreviewPath] = useState<Path | null>(null);
 
   // Refs for imperative objects
   const engineRef = useRef<SimulationEngine | null>(null);
@@ -149,6 +170,9 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
 
       // Add heatmap layer (above streets, below buildings)
       mapView.addHeatmapLayer();
+
+      // Add path preview layer (above heatmap, below buildings)
+      mapView.addPathPreviewLayer();
 
       // Enrich building GeoJSON with primaryLandUse for data-driven styling
       const enrichedBuildings = enrichBuildingGeoJSON(buildingData, buildingStore);
@@ -317,6 +341,31 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
     }
   }, [showTopStreets, isLoading]);
 
+  // Update path preview layer visibility
+  useEffect(() => {
+    const mapView = mapViewRef.current;
+    if (!mapView || isLoading) return;
+
+    mapView.setPathPreviewVisibility(showPathPreview);
+  }, [showPathPreview, isLoading]);
+
+  // Compute path when preview points change
+  useEffect(() => {
+    const mapView = mapViewRef.current;
+    const engine = engineRef.current;
+    if (!mapView || !engine || isLoading) return;
+
+    if (!showPathPreview || !pathPreviewStart || !pathPreviewEnd) {
+      setPathPreviewPath(null);
+      mapView.updatePathPreviewLine([]);
+      return;
+    }
+
+    const path = engine.findPath(pathPreviewStart, pathPreviewEnd);
+    setPathPreviewPath(path);
+    mapView.updatePathPreviewLine(path.points);
+  }, [showPathPreview, pathPreviewStart, pathPreviewEnd, isLoading]);
+
   // Actions
   const play = useCallback(() => {
     engineRef.current?.start();
@@ -363,6 +412,15 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
     return engineRef.current?.getAverageDistancesByLandUse() || new Map();
   }, []);
 
+  // Path preview methods
+  const findPath = useCallback((from: [number, number], to: [number, number]): Path | null => {
+    return engineRef.current?.findPath(from, to) ?? null;
+  }, []);
+
+  const getMapView = useCallback(() => {
+    return mapViewRef.current;
+  }, []);
+
   const value: SimulationContextValue = {
     isLoading,
     loadingStatus,
@@ -374,6 +432,10 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
     showTopStreets,
     speed,
     spawnRate,
+    showPathPreview,
+    pathPreviewStart,
+    pathPreviewEnd,
+    pathPreviewPath,
     play,
     pause,
     reset,
@@ -383,6 +445,11 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
     setShowUsageHeatmap,
     setShowAgents,
     setShowTopStreets,
+    setShowPathPreview,
+    setPathPreviewStart,
+    setPathPreviewEnd,
+    findPath,
+    getMapView,
     initializeMap,
     resizeMap,
     getStreetUsage,
