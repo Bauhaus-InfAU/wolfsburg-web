@@ -159,4 +159,33 @@ export class ODMatrix {
   get originCount(): number {
     return this.matrix.size;
   }
+
+  /**
+   * Get average distance to each land use type across all origins.
+   * Returns a map of land use -> average distance in meters.
+   */
+  getAverageDistancesByLandUse(): Map<LandUse, { avgDistance: number; count: number }> {
+    const landUseStats = new Map<LandUse, { totalDistance: number; totalWeight: number; count: number }>();
+
+    for (const entries of this.matrix.values()) {
+      for (const entry of entries) {
+        const landUse = entry.destination.primaryLandUse;
+        const existing = landUseStats.get(landUse) || { totalDistance: 0, totalWeight: 0, count: 0 };
+        existing.totalDistance += entry.distance * entry.probability;
+        existing.totalWeight += entry.probability;
+        existing.count += 1;
+        landUseStats.set(landUse, existing);
+      }
+    }
+
+    const result = new Map<LandUse, { avgDistance: number; count: number }>();
+    for (const [landUse, stats] of landUseStats) {
+      result.set(landUse, {
+        avgDistance: stats.totalWeight > 0 ? stats.totalDistance / stats.totalWeight : 0,
+        count: stats.count,
+      });
+    }
+
+    return result;
+  }
 }

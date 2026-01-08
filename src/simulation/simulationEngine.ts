@@ -196,7 +196,8 @@ export class SimulationEngine {
     const cappedDelta = Math.min(deltaMs, 100);
 
     // Generate new trips (use effectiveMaxAgents which scales with enabled land uses)
-    if (this.agentPool.getActiveAgents().length < this.effectiveMaxAgents) {
+    // Use O(1) activeCount instead of creating an array
+    if (this.agentPool.activeCount < this.effectiveMaxAgents) {
       const trips = this.tripGenerator.generateTrips(
         cappedDelta,
         SIMULATION_DEFAULTS.TIME_SCALE * this.speed
@@ -223,11 +224,11 @@ export class SimulationEngine {
       }
     }
 
-    // Update agents
-    const agents = this.agentPool.getActiveAgents();
+    // Get active agents once per frame to avoid repeated Array.from() allocations
+    const activeAgents = this.agentPool.getActiveAgents();
     const agentsToRelease: Agent[] = [];
 
-    for (const agent of agents) {
+    for (const agent of activeAgents) {
       const stillActive = agent.update(cappedDelta, this.speed);
       if (!stillActive) {
         agentsToRelease.push(agent);
@@ -239,14 +240,14 @@ export class SimulationEngine {
       this.agentPool.release(agent);
     }
 
-    // Update stats
-    this.stats.activeAgents = this.agentPool.getActiveAgents().length;
+    // Update stats using cached array length
+    this.stats.activeAgents = activeAgents.length - agentsToRelease.length;
     this.stats.avgDistance =
       this.stats.totalTrips > 0 ? Math.round(this.totalDistanceSum / this.stats.totalTrips) : 0;
 
-    // Notify callbacks
+    // Notify callbacks with cached array
     if (this.onUpdate) {
-      this.onUpdate(this.agentPool.getActiveAgents(), this.stats);
+      this.onUpdate(activeAgents, this.stats);
     }
     if (this.onStatsUpdate) {
       this.onStatsUpdate(this.stats);
@@ -286,5 +287,9 @@ export class SimulationEngine {
 
   getUsageTracker(): StreetUsageTracker {
     return this.usageTracker;
+  }
+
+  getAverageDistancesByLandUse(): Map<LandUse, { avgDistance: number; count: number }> {
+    return this.odMatrix.getAverageDistancesByLandUse();
   }
 }

@@ -9,9 +9,9 @@ import { VisualizationToggles } from './VisualizationToggles';
 import { StatsDisplay } from './StatsDisplay';
 import { Legend } from './Legend';
 
-const MIN_WIDTH = 280;
-const MAX_WIDTH = 480;
-const DEFAULT_WIDTH = 320;
+const MIN_WIDTH = 300;
+const MAX_WIDTH = 500;
+const DEFAULT_WIDTH = 360;
 
 export function ControlPanel() {
   const [width, setWidth] = useState(DEFAULT_WIDTH);

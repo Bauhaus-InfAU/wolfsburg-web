@@ -96,7 +96,7 @@ export const SIMULATION_DEFAULTS = {
   PATH_CACHE_SIZE: 1000,
 
   // Rendering
-  AGENT_RADIUS: 6, // pixels
+  AGENT_RADIUS: 3, // pixels
 };
 
 // Precision for coordinate rounding (for graph node merging)

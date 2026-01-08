@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useRef, useCallback, useEffect } from 'react';
 import type { LandUse, SimulationStats, BuildingCollection, StreetCollection } from '../config/types';
 import { DESTINATION_LAND_USES } from '../config/constants';
-import { SimulationEngine } from '../simulation/SimulationEngine';
+import { SimulationEngine } from '../simulation/simulationEngine';
 import { BuildingStore } from '../data/buildingStore';
 import { StreetGraph } from '../data/streetGraph';
 import { MapLibreView } from '../visualization/mapLibreView';
@@ -68,7 +68,7 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
   const buildingStoreRef = useRef<BuildingStore | null>(null);
   const initializedRef = useRef(false);
   const lastHeatmapUpdateRef = useRef<number>(0);
-  const HEATMAP_UPDATE_INTERVAL = 500; // ms
+  const HEATMAP_UPDATE_INTERVAL = 1000; // ms (reduced frequency for performance)
 
   /**
    * Enrich building GeoJSON with primaryLandUse property for MapLibre data-driven styling.

@@ -7,8 +7,15 @@ export interface SegmentUsage {
   normalized: number;
 }
 
+interface SegmentData {
+  from: [number, number];
+  to: [number, number];
+  count: number;
+}
+
 export class StreetUsageTracker {
-  private usageCounts: Map<string, number> = new Map();
+  // Store parsed coordinates alongside counts to avoid re-parsing strings
+  private segments: Map<string, SegmentData> = new Map();
   private maxCount: number = 0;
 
   /**
@@ -27,34 +34,37 @@ export class StreetUsageTracker {
   recordPath(path: [number, number][]): void {
     for (let i = 0; i < path.length - 1; i++) {
       const segmentKey = this.getSegmentKey(path[i], path[i + 1]);
-      const newCount = (this.usageCounts.get(segmentKey) || 0) + 1;
-      this.usageCounts.set(segmentKey, newCount);
-      if (newCount > this.maxCount) {
-        this.maxCount = newCount;
+      let segment = this.segments.get(segmentKey);
+      if (!segment) {
+        // Store coordinates on first use (already parsed, no string splitting needed later)
+        segment = { from: path[i], to: path[i + 1], count: 0 };
+        this.segments.set(segmentKey, segment);
+      }
+      segment.count++;
+      if (segment.count > this.maxCount) {
+        this.maxCount = segment.count;
       }
     }
   }
 
   /**
    * Get all segments with usage data.
+   * Uses cached coordinates - no string parsing needed.
    */
   getSegmentUsage(): SegmentUsage[] {
-    const segments: SegmentUsage[] = [];
+    const result: SegmentUsage[] = [];
+    const maxCount = this.maxCount;
 
-    for (const [key, count] of this.usageCounts) {
-      const [key1, key2] = key.split('|');
-      const [lng1, lat1] = key1.split(',').map(Number);
-      const [lng2, lat2] = key2.split(',').map(Number);
-
-      segments.push({
-        from: [lng1, lat1],
-        to: [lng2, lat2],
-        count,
-        normalized: this.maxCount > 0 ? count / this.maxCount : 0,
+    for (const segment of this.segments.values()) {
+      result.push({
+        from: segment.from,
+        to: segment.to,
+        count: segment.count,
+        normalized: maxCount > 0 ? segment.count / maxCount : 0,
       });
     }
 
-    return segments;
+    return result;
   }
 
   getMaxCount(): number {
@@ -62,11 +72,11 @@ export class StreetUsageTracker {
   }
 
   getTotalSegments(): number {
-    return this.usageCounts.size;
+    return this.segments.size;
   }
 
   reset(): void {
-    this.usageCounts.clear();
+    this.segments.clear();
     this.maxCount = 0;
   }
 }

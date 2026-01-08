@@ -1,5 +1,5 @@
 import type { MapView } from './mapView';
-import type { StreetUsageTracker } from '../data/StreetUsageTracker';
+import type { StreetUsageTracker, SegmentUsage } from '../data/StreetUsageTracker';
 
 /**
  * Interpolate color based on normalized value (0-1).
@@ -64,4 +64,50 @@ export function renderStreetUsage(
     ctx.lineTo(to.x, to.y);
     ctx.stroke();
   }
+}
+
+/**
+ * Render highlighted top streets with a glowing effect.
+ */
+export function renderTopStreets(
+  mapView: MapView,
+  topStreets: SegmentUsage[],
+  highlightColor: string = '#f57f5b'
+): void {
+  if (topStreets.length === 0) return;
+
+  const ctx = mapView.ctx;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+
+  // Draw glow effect (outer)
+  ctx.strokeStyle = highlightColor;
+  ctx.globalAlpha = 0.3;
+  ctx.lineWidth = 12;
+
+  for (const segment of topStreets) {
+    const from = mapView.dataToCanvas(segment.from[0], segment.from[1]);
+    const to = mapView.dataToCanvas(segment.to[0], segment.to[1]);
+
+    ctx.beginPath();
+    ctx.moveTo(from.x, from.y);
+    ctx.lineTo(to.x, to.y);
+    ctx.stroke();
+  }
+
+  // Draw core line
+  ctx.globalAlpha = 1;
+  ctx.lineWidth = 4;
+
+  for (const segment of topStreets) {
+    const from = mapView.dataToCanvas(segment.from[0], segment.from[1]);
+    const to = mapView.dataToCanvas(segment.to[0], segment.to[1]);
+
+    ctx.beginPath();
+    ctx.moveTo(from.x, from.y);
+    ctx.lineTo(to.x, to.y);
+    ctx.stroke();
+  }
+
+  ctx.globalAlpha = 1;
 }
