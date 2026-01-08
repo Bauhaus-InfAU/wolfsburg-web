@@ -1,12 +1,12 @@
 import { LAND_USE_COLORS, SIMULATION_DEFAULTS } from '../config/constants';
 import { Agent } from '../agents/agent';
-import { MapView } from './mapView';
+import { MapLibreView } from './mapLibreView';
 
 export class AgentRenderer {
-  private mapView: MapView;
+  private mapView: MapLibreView;
   private ctx: CanvasRenderingContext2D;
 
-  constructor(mapView: MapView) {
+  constructor(mapView: MapLibreView) {
     this.mapView = mapView;
     this.ctx = mapView.getCanvasContext();
   }
@@ -20,23 +20,24 @@ export class AgentRenderer {
     const bounds = this.mapView.getVisibleBounds();
     const radius = SIMULATION_DEFAULTS.AGENT_RADIUS;
 
-    // Add margin to bounds for culling
-    const margin = (bounds.maxX - bounds.minX) * 0.1;
+    // Add margin to bounds for culling (10% of visible area)
+    const marginX = (bounds.maxX - bounds.minX) * 0.1;
+    const marginY = (bounds.maxY - bounds.minY) * 0.1;
     const cullBounds = {
-      minX: bounds.minX - margin,
-      maxX: bounds.maxX + margin,
-      minY: bounds.minY - margin,
-      maxY: bounds.maxY + margin,
+      minX: bounds.minX - marginX,
+      maxX: bounds.maxX + marginX,
+      minY: bounds.minY - marginY,
+      maxY: bounds.maxY + marginY,
     };
 
     // Group agents by destination land use for batch rendering
     const agentsByColor = new Map<string, Agent[]>();
 
     for (const agent of agents) {
-      const [x, y] = agent.position;
+      const [lng, lat] = agent.position;
 
       // Viewport culling with margin
-      if (x < cullBounds.minX || x > cullBounds.maxX || y < cullBounds.minY || y > cullBounds.maxY) {
+      if (lng < cullBounds.minX || lng > cullBounds.maxX || lat < cullBounds.minY || lat > cullBounds.maxY) {
         continue;
       }
 
@@ -57,8 +58,8 @@ export class AgentRenderer {
       this.ctx.beginPath();
 
       for (const agent of colorAgents) {
-        const [x, y] = agent.position;
-        const point = this.mapView.dataToCanvas(x, y);
+        const [lng, lat] = agent.position;
+        const point = this.mapView.project([lng, lat]);
 
         this.ctx.moveTo(point.x + radius, point.y);
         this.ctx.arc(point.x, point.y, radius, 0, Math.PI * 2);

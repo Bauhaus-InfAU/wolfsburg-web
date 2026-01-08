@@ -4,12 +4,11 @@ import { DESTINATION_LAND_USES } from '../config/constants';
 import { SimulationEngine } from '../simulation/SimulationEngine';
 import { BuildingStore } from '../data/buildingStore';
 import { StreetGraph } from '../data/streetGraph';
-import { MapView } from '../visualization/mapView';
+import { MapLibreView } from '../visualization/mapLibreView';
 import { AgentRenderer } from '../visualization/agentRenderer';
 import { loadBuildings, loadStreets } from '../data/dataLoader';
-import { renderBuildings, createLegend } from '../visualization/buildingLayer';
-import { renderStreets } from '../visualization/streetLayer';
-import { renderStreetUsage } from '../visualization/streetUsageLayer';
+import { createLegend } from '../visualization/buildingLayer';
+import type { SegmentUsage } from '../data/StreetUsageTracker';
 
 interface SimulationContextValue {
   // State
@@ -20,6 +19,7 @@ interface SimulationContextValue {
   enabledLandUses: Set<LandUse>;
   showUsageHeatmap: boolean;
   showAgents: boolean;
+  showTopStreets: boolean;
   speed: number;
   spawnRate: number;
 
@@ -32,10 +32,16 @@ interface SimulationContextValue {
   toggleLandUse: (landUse: LandUse, enabled: boolean) => void;
   setShowUsageHeatmap: (show: boolean) => void;
   setShowAgents: (show: boolean) => void;
+  setShowTopStreets: (show: boolean) => void;
 
   // Map initialization and resize
   initializeMap: (containerId: string) => void;
   resizeMap: () => void;
+
+  // Data access for insights
+  getStreetUsage: () => SegmentUsage[];
+  getStreetUsageMax: () => number;
+  getAverageDistancesByLandUse: () => Map<LandUse, { avgDistance: number; count: number }>;
 }
 
 const SimulationContext = createContext<SimulationContextValue | null>(null);
@@ -51,41 +57,41 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
   const [enabledLandUses, setEnabledLandUses] = useState<Set<LandUse>>(new Set(DESTINATION_LAND_USES));
   const [showUsageHeatmap, setShowUsageHeatmap] = useState(false);
   const [showAgents, setShowAgents] = useState(true);
+  const [showTopStreets, setShowTopStreets] = useState(false);
   const [speed, setSpeedState] = useState(1);
   const [spawnRate, setSpawnRateState] = useState(1.0);
 
   // Refs for imperative objects
   const engineRef = useRef<SimulationEngine | null>(null);
-  const mapViewRef = useRef<MapView | null>(null);
+  const mapViewRef = useRef<MapLibreView | null>(null);
   const agentRendererRef = useRef<AgentRenderer | null>(null);
-  const buildingDataRef = useRef<BuildingCollection | null>(null);
-  const streetDataRef = useRef<StreetCollection | null>(null);
   const buildingStoreRef = useRef<BuildingStore | null>(null);
   const initializedRef = useRef(false);
+  const lastHeatmapUpdateRef = useRef<number>(0);
+  const HEATMAP_UPDATE_INTERVAL = 500; // ms
 
-  // Render function for static layers
-  const renderStaticLayers = useCallback((landUses?: Set<LandUse>) => {
-    const mapView = mapViewRef.current;
-    const buildingData = buildingDataRef.current;
-    const buildingStore = buildingStoreRef.current;
-    const streetData = streetDataRef.current;
-    const engine = engineRef.current;
-
-    if (!mapView || !buildingData || !buildingStore) return;
-
-    mapView.clearCanvas();
-
-    if (streetData) {
-      renderStreets(mapView, streetData);
-    }
-
-    // Render usage heatmap on top of streets if enabled
-    if (showUsageHeatmap && engine) {
-      renderStreetUsage(mapView, engine.getUsageTracker());
-    }
-
-    renderBuildings(mapView, buildingData, buildingStore, landUses);
-  }, [showUsageHeatmap]);
+  /**
+   * Enrich building GeoJSON with primaryLandUse property for MapLibre data-driven styling.
+   */
+  const enrichBuildingGeoJSON = useCallback((
+    geoJSON: BuildingCollection,
+    buildingStore: BuildingStore
+  ): BuildingCollection => {
+    return {
+      ...geoJSON,
+      features: geoJSON.features.map((feature) => {
+        const buildingId = feature.properties['Building ID'];
+        const building = buildingStore.getBuildingById(buildingId);
+        return {
+          ...feature,
+          properties: {
+            ...feature.properties,
+            primaryLandUse: building?.primaryLandUse || 'Undefined Land use',
+          },
+        };
+      }),
+    };
+  }, []);
 
   // Initialize map and load data
   const initializeMap = useCallback(async (containerId: string) => {
@@ -93,17 +99,19 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
     initializedRef.current = true;
 
     try {
-      // Initialize map view
+      // Initialize MapLibre view
       setLoadingStatus('Initializing view...');
-      const mapView = new MapView(containerId);
+      const mapView = new MapLibreView(containerId);
       mapViewRef.current = mapView;
+
+      // Wait for map to be ready
+      await mapView.ready();
 
       // Load buildings
       setLoadingStatus('Loading buildings...');
       let buildingData: BuildingCollection;
       try {
         buildingData = await loadBuildings();
-        buildingDataRef.current = buildingData;
       } catch (e) {
         console.warn('Could not load buildings:', e);
         setLoadingStatus('Buildings data not found. Please add weimar-buildings.geojson to public/data/');
@@ -121,25 +129,38 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
       console.log(`Residential: ${buildingStore.residential.length}`);
       console.log(`Destinations: ${buildingStore.destinations.length}`);
 
-      // Set map bounds
-      const bounds = buildingStore.getBounds();
-      if (bounds) {
-        mapView.setDataBounds(bounds[0][1], bounds[0][0], bounds[1][1], bounds[1][0]);
-        mapView.fitToData();
-      }
-
       // Load streets
       setLoadingStatus('Loading streets...');
       let streetData: StreetCollection | null = null;
       try {
         streetData = await loadStreets();
-        streetDataRef.current = streetData;
       } catch (e) {
         console.warn('Could not load streets:', e);
         console.log('Simulation will use direct paths between buildings');
       }
 
-      // Build street graph
+      // Add MapLibre layers
+      setLoadingStatus('Adding map layers...');
+
+      // Add streets first (bottom layer)
+      if (streetData) {
+        mapView.addStreetsLayer(streetData);
+      }
+
+      // Add heatmap layer (above streets, below buildings)
+      mapView.addHeatmapLayer();
+
+      // Enrich building GeoJSON with primaryLandUse for data-driven styling
+      const enrichedBuildings = enrichBuildingGeoJSON(buildingData, buildingStore);
+      mapView.addBuildingsLayer(enrichedBuildings);
+
+      // Fit map to data bounds
+      const bounds = buildingStore.getBounds();
+      if (bounds) {
+        mapView.fitBounds(bounds);
+      }
+
+      // Build street graph for pathfinding
       setLoadingStatus('Building street network...');
       const streetGraph = new StreetGraph();
       if (streetData) {
@@ -154,7 +175,7 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
 
       console.log(`Max active agents: ${engine.getMaxActiveAgents().toLocaleString()} (10% of residents)`);
 
-      // Initialize renderer
+      // Initialize agent renderer
       const agentRenderer = new AgentRenderer(mapView);
       agentRendererRef.current = agentRenderer;
 
@@ -166,6 +187,26 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
         if (showAgents && agentRendererRef.current) {
           agentRendererRef.current.render(agents);
         }
+
+        // Update heatmap periodically during simulation
+        if (showUsageHeatmap) {
+          const now = Date.now();
+          if (now - lastHeatmapUpdateRef.current > HEATMAP_UPDATE_INTERVAL) {
+            const segments = engine.getUsageTracker().getSegmentUsage();
+            mapView.updateHeatmapData(segments);
+            lastHeatmapUpdateRef.current = now;
+          }
+        }
+
+        // Update top streets periodically
+        if (showTopStreets) {
+          const now = Date.now();
+          if (now - lastHeatmapUpdateRef.current > HEATMAP_UPDATE_INTERVAL) {
+            const segments = engine.getUsageTracker().getSegmentUsage();
+            const sorted = [...segments].sort((a, b) => b.count - a.count);
+            mapView.updateTopStreets(sorted.slice(0, 5));
+          }
+        }
       };
 
       engine.onStatsUpdate = (newStats) => {
@@ -174,19 +215,11 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
 
       engine.onLandUseToggle = (newEnabledLandUses) => {
         setEnabledLandUses(new Set(newEnabledLandUses));
-        renderStaticLayers(newEnabledLandUses);
+        mapView.setLandUseFilter(newEnabledLandUses);
       };
 
-      // Set up view change callback
-      mapView.onViewChange = () => {
-        renderStaticLayers(engineRef.current?.getEnabledLandUses());
-        if (showAgents && agentRendererRef.current && engineRef.current) {
-          agentRendererRef.current.render(engineRef.current.getAgents());
-        }
-      };
-
-      // Initial render
-      renderStaticLayers();
+      // Note: onViewChange callback is set up in the useEffect below
+      // to ensure it has access to the current showAgents value
 
       setLoadingStatus('Ready!');
       setIsLoading(false);
@@ -197,9 +230,9 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
       console.error('Error initializing simulation:', error);
       setLoadingStatus(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
-  }, [renderStaticLayers, showAgents]);
+  }, [enrichBuildingGeoJSON, showAgents, showUsageHeatmap, showTopStreets]);
 
-  // Update engine callbacks when showAgents changes
+  // Update engine callbacks and view change handler when display toggles change
   useEffect(() => {
     const engine = engineRef.current;
     const agentRenderer = agentRendererRef.current;
@@ -207,26 +240,82 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
 
     if (!engine || !agentRenderer || !mapView) return;
 
+    // Update the onUpdate callback with current toggle states
     engine.onUpdate = (agents) => {
+      // Render agents if enabled
       if (showAgents) {
         agentRenderer.render(agents);
       }
+
+      // Update heatmap periodically during simulation
+      if (showUsageHeatmap) {
+        const now = Date.now();
+        if (now - lastHeatmapUpdateRef.current > HEATMAP_UPDATE_INTERVAL) {
+          const segments = engine.getUsageTracker().getSegmentUsage();
+          mapView.updateHeatmapData(segments);
+          lastHeatmapUpdateRef.current = now;
+        }
+      }
+
+      // Update top streets periodically
+      if (showTopStreets) {
+        const now = Date.now();
+        if (now - lastHeatmapUpdateRef.current > HEATMAP_UPDATE_INTERVAL) {
+          const segments = engine.getUsageTracker().getSegmentUsage();
+          const sorted = [...segments].sort((a, b) => b.count - a.count);
+          mapView.updateTopStreets(sorted.slice(0, 5));
+        }
+      }
     };
 
-    // Immediately update visibility
+    // Update view change callback with current showAgents value
+    mapView.onViewChange = () => {
+      if (showAgents && agentRendererRef.current && engineRef.current) {
+        agentRendererRef.current.render(engineRef.current.getAgents());
+      }
+    };
+
+    // Immediately update agent visibility
     if (showAgents) {
       agentRenderer.render(engine.getAgents());
     } else {
       mapView.clearAgentCanvas();
     }
-  }, [showAgents]);
+  }, [showAgents, showUsageHeatmap, showTopStreets]);
 
-  // Update static layers when showUsageHeatmap changes
+  // Update MapLibre layer visibility when toggles change
   useEffect(() => {
-    if (!isLoading) {
-      renderStaticLayers(engineRef.current?.getEnabledLandUses());
+    const mapView = mapViewRef.current;
+    const engine = engineRef.current;
+    if (!mapView || isLoading) return;
+
+    // Toggle heatmap layer visibility
+    mapView.setLayerVisibility('street-usage-heatmap', showUsageHeatmap);
+
+    // Update heatmap data immediately when toggling on
+    if (showUsageHeatmap && engine) {
+      const segments = engine.getUsageTracker().getSegmentUsage();
+      mapView.updateHeatmapData(segments);
     }
-  }, [showUsageHeatmap, isLoading, renderStaticLayers]);
+  }, [showUsageHeatmap, isLoading]);
+
+  // Update top streets layer visibility
+  useEffect(() => {
+    const mapView = mapViewRef.current;
+    const engine = engineRef.current;
+    if (!mapView || isLoading) return;
+
+    // Toggle top streets layers visibility
+    mapView.setLayerVisibility('top-streets-glow', showTopStreets);
+    mapView.setLayerVisibility('top-streets-core', showTopStreets);
+
+    // Update top streets data immediately when toggling on
+    if (showTopStreets && engine) {
+      const segments = engine.getUsageTracker().getSegmentUsage();
+      const sorted = [...segments].sort((a, b) => b.count - a.count);
+      mapView.updateTopStreets(sorted.slice(0, 5));
+    }
+  }, [showTopStreets, isLoading]);
 
   // Actions
   const play = useCallback(() => {
@@ -262,6 +351,18 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
     mapViewRef.current?.resizeCanvas();
   }, []);
 
+  const getStreetUsage = useCallback((): SegmentUsage[] => {
+    return engineRef.current?.getUsageTracker().getSegmentUsage() || [];
+  }, []);
+
+  const getStreetUsageMax = useCallback((): number => {
+    return engineRef.current?.getUsageTracker().getMaxCount() || 0;
+  }, []);
+
+  const getAverageDistancesByLandUse = useCallback((): Map<LandUse, { avgDistance: number; count: number }> => {
+    return engineRef.current?.getAverageDistancesByLandUse() || new Map();
+  }, []);
+
   const value: SimulationContextValue = {
     isLoading,
     loadingStatus,
@@ -270,6 +371,7 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
     enabledLandUses,
     showUsageHeatmap,
     showAgents,
+    showTopStreets,
     speed,
     spawnRate,
     play,
@@ -280,8 +382,12 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
     toggleLandUse,
     setShowUsageHeatmap,
     setShowAgents,
+    setShowTopStreets,
     initializeMap,
     resizeMap,
+    getStreetUsage,
+    getStreetUsageMax,
+    getAverageDistancesByLandUse,
   };
 
   return (
