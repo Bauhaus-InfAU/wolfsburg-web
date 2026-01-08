@@ -76,7 +76,7 @@ async function main() {
     let showAgents = true;
 
     // Render function for static layers
-    function renderStaticLayers() {
+    function renderStaticLayers(enabledLandUses?: Set<import('./config/types').LandUse>) {
       mapView.clearCanvas();
       if (streetData) {
         renderStreets(mapView, streetData);
@@ -85,7 +85,7 @@ async function main() {
       if (showUsageHeatmap) {
         renderStreetUsage(mapView, engine.getUsageTracker());
       }
-      renderBuildings(mapView, buildingData, buildingStore);
+      renderBuildings(mapView, buildingData, buildingStore, enabledLandUses);
     }
 
     // Initial render
@@ -93,7 +93,7 @@ async function main() {
 
     // Re-render on view change
     mapView.onViewChange = () => {
-      renderStaticLayers();
+      renderStaticLayers(engine.getEnabledLandUses());
       if (showAgents) {
         agentRenderer.render(engine.getAgents());
       }
@@ -115,7 +115,12 @@ async function main() {
     // Set up visualization toggles
     controlPanel.onUsageToggle = (enabled) => {
       showUsageHeatmap = enabled;
-      renderStaticLayers();
+      renderStaticLayers(engine.getEnabledLandUses());
+    };
+
+    // Re-render buildings when land use filter changes
+    engine.onLandUseToggle = (enabledLandUses) => {
+      renderStaticLayers(enabledLandUses);
     };
 
     controlPanel.onAgentsToggle = (visible) => {

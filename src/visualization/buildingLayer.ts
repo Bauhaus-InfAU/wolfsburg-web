@@ -6,7 +6,8 @@ import { MapView } from './mapView';
 export function renderBuildings(
   mapView: MapView,
   collection: BuildingCollection,
-  store: BuildingStore
+  store: BuildingStore,
+  enabledLandUses?: Set<LandUse>
 ): void {
   const ctx = mapView.ctx;
 
@@ -14,6 +15,14 @@ export function renderBuildings(
     const buildingId = feature.properties['Building ID'];
     const building = store.getBuildingById(buildingId);
     const primaryLandUse = building?.primaryLandUse || 'Undefined Land use';
+
+    // Filter by enabled land uses if provided
+    // Always show residential buildings (they are origins)
+    if (enabledLandUses && primaryLandUse !== 'Generic Residential') {
+      const hasEnabledUse = building?.landUses.some(lu => enabledLandUses.has(lu));
+      if (!hasEnabledUse) continue;
+    }
+
     const color = LAND_USE_COLORS[primaryLandUse];
 
     // Draw each polygon in the MultiPolygon

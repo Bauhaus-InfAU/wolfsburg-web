@@ -38,6 +38,7 @@ export class SimulationEngine {
   // Callbacks
   public onUpdate: ((agents: Agent[], stats: SimulationStats) => void) | null = null;
   public onStatsUpdate: ((stats: SimulationStats) => void) | null = null;
+  public onLandUseToggle: ((enabledLandUses: Set<LandUse>) => void) | null = null;
 
   constructor(buildingStore: BuildingStore, streetGraph: StreetGraph) {
     this.buildingStore = buildingStore;
@@ -178,6 +179,11 @@ export class SimulationEngine {
     }
     this.recalculateODMatrix();
     this.updateLandUseWeightMultiplier();
+    this.onLandUseToggle?.(this.params.enabledLandUses);
+  }
+
+  getEnabledLandUses(): Set<LandUse> {
+    return this.params.enabledLandUses;
   }
 
   private update(timestamp: number): void {
