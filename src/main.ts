@@ -10,7 +10,8 @@ import { StreetGraph } from './data/streetGraph';
 import { MapView } from './visualization/mapView';
 import { renderBuildings, createLegend } from './visualization/buildingLayer';
 import { renderStreets } from './visualization/streetLayer';
-import { SimulationEngine } from './simulation/simulationEngine';
+import { renderStreetUsage } from './visualization/streetUsageLayer';
+import { SimulationEngine } from './simulation/SimulationEngine';
 import { AgentRenderer } from './visualization/agentRenderer';
 import { ControlPanel } from './ui/controlPanel';
 import { StatsPanel } from './ui/statsPanel';
@@ -70,11 +71,19 @@ async function main() {
       console.log(`Street graph: ${streetGraph.nodeCount} nodes, ${streetGraph.edgeCount} edges`);
     }
 
+    // State for visualization toggles
+    let showUsageHeatmap = false;
+    let showAgents = true;
+
     // Render function for static layers
     function renderStaticLayers() {
       mapView.clearCanvas();
       if (streetData) {
         renderStreets(mapView, streetData);
+      }
+      // Render usage heatmap on top of streets if enabled
+      if (showUsageHeatmap) {
+        renderStreetUsage(mapView, engine.getUsageTracker());
       }
       renderBuildings(mapView, buildingData, buildingStore);
     }
@@ -85,7 +94,9 @@ async function main() {
     // Re-render on view change
     mapView.onViewChange = () => {
       renderStaticLayers();
-      agentRenderer.render(engine.getAgents());
+      if (showAgents) {
+        agentRenderer.render(engine.getAgents());
+      }
     };
 
     // Initialize simulation engine
@@ -97,13 +108,30 @@ async function main() {
     const agentRenderer = new AgentRenderer(mapView);
 
     // Initialize UI
-    new ControlPanel(engine);
+    const controlPanel = new ControlPanel(engine);
     const statsPanel = new StatsPanel();
     createLegend();
 
+    // Set up visualization toggles
+    controlPanel.onUsageToggle = (enabled) => {
+      showUsageHeatmap = enabled;
+      renderStaticLayers();
+    };
+
+    controlPanel.onAgentsToggle = (visible) => {
+      showAgents = visible;
+      if (visible) {
+        agentRenderer.render(engine.getAgents());
+      } else {
+        mapView.clearAgentCanvas();
+      }
+    };
+
     // Set up render loop
     engine.onUpdate = (agents) => {
-      agentRenderer.render(agents);
+      if (showAgents) {
+        agentRenderer.render(agents);
+      }
     };
 
     engine.onStatsUpdate = (stats) => {

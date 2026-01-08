@@ -3,7 +3,7 @@ import {
   LAND_USE_DISPLAY_NAMES,
   LAND_USE_COLORS,
 } from '../config/constants';
-import { SimulationEngine } from '../simulation/simulationEngine';
+import { SimulationEngine } from '../simulation/SimulationEngine';
 
 export class ControlPanel {
   private engine: SimulationEngine;
@@ -17,6 +17,10 @@ export class ControlPanel {
   private spawnValue: HTMLSpanElement;
   // Note: decay and distance sliders removed - now using MiD 2023 calibrated
   // per-land-use decay parameters
+
+  // Callbacks for visualization toggles
+  public onUsageToggle: ((enabled: boolean) => void) | null = null;
+  public onAgentsToggle: ((visible: boolean) => void) | null = null;
 
   constructor(engine: SimulationEngine) {
     this.engine = engine;
@@ -32,6 +36,7 @@ export class ControlPanel {
 
     this.setupEventListeners();
     this.createLandUseToggles();
+    this.createVisualizationControls();
     this.hideObsoleteControls();
   }
 
@@ -121,5 +126,38 @@ export class ControlPanel {
 
       container.appendChild(label);
     }
+  }
+
+  private createVisualizationControls(): void {
+    const container = document.getElementById('visualization-toggles');
+    if (!container) return;
+
+    // Show Agents toggle (default: on)
+    const agentsLabel = document.createElement('label');
+    const agentsCheckbox = document.createElement('input');
+    agentsCheckbox.type = 'checkbox';
+    agentsCheckbox.checked = true;
+
+    agentsCheckbox.addEventListener('change', () => {
+      this.onAgentsToggle?.(agentsCheckbox.checked);
+    });
+
+    agentsLabel.appendChild(agentsCheckbox);
+    agentsLabel.appendChild(document.createTextNode(' Show Agents'));
+    container.appendChild(agentsLabel);
+
+    // Show Street Usage toggle (default: off)
+    const usageLabel = document.createElement('label');
+    const usageCheckbox = document.createElement('input');
+    usageCheckbox.type = 'checkbox';
+    usageCheckbox.checked = false;
+
+    usageCheckbox.addEventListener('change', () => {
+      this.onUsageToggle?.(usageCheckbox.checked);
+    });
+
+    usageLabel.appendChild(usageCheckbox);
+    usageLabel.appendChild(document.createTextNode(' Show Street Usage'));
+    container.appendChild(usageLabel);
   }
 }

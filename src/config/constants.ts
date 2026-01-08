@@ -70,8 +70,8 @@ export const SQM_PER_PERSON = 40.9;
 // Note: Coordinates are in degrees (Heron GeoJSON export converts to WGS84)
 // Distance calculations convert to meters internally (1 degree ≈ 111km)
 export const SIMULATION_DEFAULTS = {
-  // Agent movement: 1.4 m/s walking speed
-  WALKING_SPEED: 1.4, // meters per simulated second
+  // Agent movement: 4.2 km/h = 1.167 m/s walking speed
+  WALKING_SPEED: 1.167, // meters per simulated second
 
   // Trip generation
   MIN_TRIP_DISTANCE: 50, // 50 meters minimum

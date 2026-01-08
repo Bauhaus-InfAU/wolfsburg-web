@@ -1,6 +1,6 @@
 import type { Building, ODEntry, LandUse } from '../config/types';
 import { createLandUseDecay } from './distanceDecay';
-import { LAND_USE_WEIGHTS, MIN_OD_WEIGHT } from '../config/constants';
+import { MIN_OD_WEIGHT } from '../config/constants';
 import { haversineDistance } from '../data/streetGraph';
 
 export class ODMatrix {
@@ -72,17 +72,17 @@ export class ODMatrix {
   }
 
   /**
-   * Get the primary (highest weighted) land use for a building.
+   * Get the primary (largest area) land use for a building.
    */
   private getPrimaryLandUse(building: Building, enabledLandUses: Set<LandUse>): LandUse {
     let bestLandUse: LandUse = building.primaryLandUse;
-    let bestWeight = 0;
+    let bestArea = 0;
 
     for (const landUse of building.landUses) {
       if (!enabledLandUses.has(landUse)) continue;
-      const weight = LAND_USE_WEIGHTS[landUse];
-      if (weight > bestWeight) {
-        bestWeight = weight;
+      const area = building.landUseAreas.get(landUse) || 0;
+      if (area > bestArea) {
+        bestArea = area;
         bestLandUse = landUse;
       }
     }
@@ -91,20 +91,19 @@ export class ODMatrix {
   }
 
   private calculateAttraction(building: Building, enabledLandUses: Set<LandUse>): number {
-    let maxWeight = 0;
+    // Use the floor area of the primary enabled land use as the attraction weight
+    // This matches the gravity model: D_i = W / e^(α × d)
+    let maxArea = 0;
 
     for (const landUse of building.landUses) {
       if (!enabledLandUses.has(landUse)) continue;
-      const weight = LAND_USE_WEIGHTS[landUse];
-      if (weight > maxWeight) {
-        maxWeight = weight;
+      const area = building.landUseAreas.get(landUse) || 0;
+      if (area > maxArea) {
+        maxArea = area;
       }
     }
 
-    // Scale by building size (floors as proxy)
-    const sizeFactor = Math.sqrt(building.floors);
-
-    return maxWeight * sizeFactor;
+    return maxArea;
   }
 
   /**

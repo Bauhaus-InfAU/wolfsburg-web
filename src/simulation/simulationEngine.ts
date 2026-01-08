@@ -3,6 +3,7 @@ import { SIMULATION_DEFAULTS, DESTINATION_LAND_USES } from '../config/constants'
 import { MID_LAND_USE_WEIGHTS } from '../data/midMobilityData';
 import { BuildingStore } from '../data/buildingStore';
 import { StreetGraph } from '../data/streetGraph';
+import { StreetUsageTracker } from '../data/StreetUsageTracker';
 import { ODMatrix } from './odMatrix';
 import { Pathfinder } from './pathfinder';
 import { TripGenerator } from './tripGenerator';
@@ -15,6 +16,7 @@ export class SimulationEngine {
   private pathfinder: Pathfinder;
   private tripGenerator: TripGenerator;
   private agentPool: AgentPool;
+  private usageTracker: StreetUsageTracker;
 
   private isRunning: boolean = false;
   private speed: number = 1;
@@ -41,6 +43,7 @@ export class SimulationEngine {
     this.buildingStore = buildingStore;
     this.odMatrix = new ODMatrix();
     this.pathfinder = new Pathfinder(streetGraph);
+    this.usageTracker = new StreetUsageTracker();
 
     // Calculate max agents based on total residents
     const totalResidents = buildingStore.getTotalResidents();
@@ -145,6 +148,9 @@ export class SimulationEngine {
     // Reset trip generator
     this.tripGenerator.reset();
 
+    // Reset usage tracker
+    this.usageTracker.reset();
+
     // Notify
     if (this.onStatsUpdate) {
       this.onStatsUpdate(this.stats);
@@ -203,6 +209,10 @@ export class SimulationEngine {
             const dy = lat2 - lat1;
             return sum + Math.sqrt(dx * dx + dy * dy) * 111000; // Rough conversion to meters
           }, 0);
+
+          // Record path usage for heatmap
+          this.usageTracker.recordPath(trip.path);
+          this.usageTracker.recordPath(trip.returnPath);
         }
       }
     }
@@ -266,5 +276,9 @@ export class SimulationEngine {
 
   getTotalResidents(): number {
     return this.buildingStore.getTotalResidents();
+  }
+
+  getUsageTracker(): StreetUsageTracker {
+    return this.usageTracker;
   }
 }

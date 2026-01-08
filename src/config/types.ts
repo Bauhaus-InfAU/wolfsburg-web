@@ -67,6 +67,7 @@ export interface Building {
   residentialArea: number; // sqm of residential floor area
   estimatedResidents: number; // based on ~40.9 sqm per person
   landUses: LandUse[];
+  landUseAreas: Map<LandUse, number>; // sqm per land use type
   primaryLandUse: LandUse;
   feature: BuildingFeature;
 }

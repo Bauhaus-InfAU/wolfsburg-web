@@ -125,13 +125,13 @@ function calculateMedianDuration(distribution: readonly number[]): number {
 
 /**
  * Calculate decay beta from median trip duration.
- * Uses walking speed of 1.4 m/s (84 m/min).
+ * Uses walking speed of 4.2 km/h = 1.167 m/s = 70 m/min.
  * Beta is calibrated so that 50% of trips occur within median distance.
  * P(d) = e^(-beta * d) = 0.5 at median distance
  * beta = ln(2) / medianDistance
  */
 function calculateDecayBeta(medianDurationMinutes: number): number {
-  const walkingSpeedMPerMin = 84; // 1.4 m/s * 60
+  const walkingSpeedMPerMin = 70; // 1.167 m/s * 60 = 4.2 km/h
   const medianDistanceM = medianDurationMinutes * walkingSpeedMPerMin;
   return Math.log(2) / medianDistanceM;
 }
@@ -205,7 +205,7 @@ export const MID_DECAY_BETA: Record<LandUse, number> = (() => {
 /**
  * Per-land-use maximum trip distance in meters.
  * Derived from 95th percentile of trip durations in MiD data.
- * Walking at 1.4 m/s = 84 m/min.
+ * Walking at 4.2 km/h = 1.167 m/s = 70 m/min.
  */
 export const MID_MAX_DISTANCE: Record<LandUse, number> = {
   // Sports and culture have many long trips (60+ min common)

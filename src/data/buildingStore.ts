@@ -85,8 +85,9 @@ export class BuildingStore {
     const centroid = this.calculateCentroid(feature);
     if (!centroid) return null;
 
-    // Extract land uses
+    // Extract land uses and their areas
     const landUses = this.extractLandUses(props);
+    const landUseAreas = this.extractLandUseAreas(props);
     const primaryLandUse = this.getPrimaryLandUse(landUses);
 
     // Parse floors and height (may be strings)
@@ -111,6 +112,7 @@ export class BuildingStore {
       residentialArea,
       estimatedResidents,
       landUses,
+      landUseAreas,
       primaryLandUse,
       feature,
     };
@@ -156,6 +158,20 @@ export class BuildingStore {
     }
 
     return landUses;
+  }
+
+  private extractLandUseAreas(props: BuildingProperties): Map<LandUse, number> {
+    const areas = new Map<LandUse, number>();
+
+    for (const key of LAND_USE_KEYS) {
+      const value = props[key];
+      const numValue = typeof value === 'string' ? parseFloat(value) : value;
+      if (numValue && numValue > 0) {
+        areas.set(key, numValue);
+      }
+    }
+
+    return areas;
   }
 
   private getPrimaryLandUse(landUses: LandUse[]): LandUse {

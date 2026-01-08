@@ -25,9 +25,10 @@ This is a browser-based pedestrian flow simulation for the city of Weimar, built
 
 **Simulation Layer** (`src/simulation/`)
 - `SimulationEngine` - Main loop using `requestAnimationFrame`. Manages agent spawning, updates, and lifecycle.
-- `ODMatrix` - Computes origin-destination probabilities using exponential distance decay and land use weights.
+- `ODMatrix` - Computes origin-destination probabilities using gravity model: `D_i = W / e^(α × d)` where W is floor area and α is decay beta.
 - `Pathfinder` - A* algorithm over the street graph with LRU caching. Falls back to direct paths when graph unavailable.
 - `TripGenerator` - Probabilistically generates trips based on residential building floors and O-D matrix.
+- `StreetUsageTracker` - Tracks how often each street segment is used by agents for heatmap visualization.
 
 **Agent System** (`src/agents/`)
 - `Agent` - State machine: `toDestination` → `atDestination` → `returning` → `completed`. Interpolates position along path waypoints.
@@ -37,6 +38,7 @@ This is a browser-based pedestrian flow simulation for the city of Weimar, built
 - `MapView` - Dual-canvas system (static layer for buildings/streets, overlay for agents). Handles pan/zoom transforms.
 - `AgentRenderer` - Draws agents on the overlay canvas, colored by destination land use.
 - `buildingLayer`/`streetLayer` - Render GeoJSON features to canvas.
+- `streetUsageLayer` - Renders street usage heatmap (blue→yellow→red gradient based on frequency).
 
 ### Data Flow
 
@@ -53,15 +55,24 @@ Coordinates are in degrees (WGS84) - the Heron plugin converts Rhino's meter coo
 ### Key Configuration
 
 See `src/config/constants.ts` for tunable parameters:
-- `WALKING_SPEED`: 1.4 m/s
+- `WALKING_SPEED`: 1.167 m/s (4.2 km/h)
 - `TIME_SCALE`: 5 (1 real second = 5 simulated seconds)
-- `MAX_ACTIVE_AGENTS`: 5000
-- `LAND_USE_WEIGHTS`: Attraction weights calibrated from MiD 2023 pedestrian trip frequencies
+- `MAX_ACTIVE_AGENTS`: based on 10% of estimated residents
+
+### Gravity Model
+
+The O-D matrix uses a gravity model for destination attractiveness:
+```
+D_i = W_i / e^(α × d_i)
+```
+Where:
+- `W_i` = floor area of destination (sqm) from GeoJSON
+- `α` = decay beta (per land use, calibrated from MiD 2023)
+- `d_i` = distance in meters
 
 ### MiD 2023 Calibration
 
 The simulation uses empirical data from "Mobilität in Deutschland 2023" (German national mobility survey) for realistic pedestrian behavior:
-- **Land use weights** derived from trip frequency by purpose (retail dominates at ~55%)
 - **Per-land-use distance decay** - each destination type has its own decay beta based on observed trip durations
 - **Per-land-use max distance** - sports/culture trips can be longer than retail trips
 
@@ -69,4 +80,4 @@ See `src/data/midMobilityData.ts` for the calibration parameters.
 
 ### Land Use Types
 
-16 land use categories defined in `src/config/types.ts`. Residential buildings generate trips; all others are potential destinations weighted by `LAND_USE_WEIGHTS`.
+16 land use categories defined in `src/config/types.ts`. Residential buildings generate trips; all others are potential destinations. Each building stores floor area per land use in `landUseAreas: Map<LandUse, number>`.
