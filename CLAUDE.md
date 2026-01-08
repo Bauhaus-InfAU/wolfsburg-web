@@ -67,10 +67,10 @@ This is a browser-based pedestrian flow simulation for the city of Weimar, built
 - `AgentPool` - Object pool pattern to avoid allocation during simulation.
 
 **Visualization** (`src/visualization/`)
-- `MapView` - Dual-canvas system (static layer for buildings/streets, overlay for agents). Handles pan/zoom transforms.
-- `AgentRenderer` - Draws agents on the overlay canvas, colored by destination land use.
-- `buildingLayer`/`streetLayer` - Render GeoJSON features to canvas.
-- `streetUsageLayer` - Renders street usage heatmap (blue→yellow→red gradient based on frequency).
+- `MapLibreView` - WebGL-accelerated map using MapLibre GL JS. Renders 3D extruded buildings and streets via GPU. Canvas overlay for agents.
+- `AgentRenderer` - Draws agents on Canvas overlay, uses `map.project()` for coordinate conversion.
+- `buildingLayer` - Provides `createLegend()` for land use color legend.
+- `streetUsageLayer` - Updates MapLibre heatmap layer data (blue→yellow→red gradient based on frequency).
 
 ### Data Flow
 
@@ -78,7 +78,25 @@ This is a browser-based pedestrian flow simulation for the city of Weimar, built
 2. Buildings indexed by land use; street graph constructed
 3. O-D matrix calculated from residential→destination pairs with decay function
 4. Simulation loop spawns agents, each following A* path through street network
-5. Agents rendered each frame on separate canvas layer
+5. Agents rendered each frame on Canvas overlay above WebGL map
+
+### Rendering Architecture
+
+MapLibre GL JS handles static geometry (buildings, streets) via WebGL for smooth 60fps pan/zoom. Agents render on a Canvas overlay.
+
+```
+Container (#map)
+├── MapLibre GL Map (WebGL)
+│   ├── Layer: street-shadow (line)
+│   ├── Layer: street-base (line)
+│   ├── Layer: street-usage-heatmap (data-driven line)
+│   ├── Layer: top-streets-glow/core (highlight layers)
+│   └── Layer: buildings-fill (fill-extrusion, 3D)
+└── Canvas Overlay (z-index: 10, pointer-events: none)
+    └── Agent dots rendered via AgentRenderer
+```
+
+Buildings use `fill-extrusion` layer with height from GeoJSON `Height` property. Colors are data-driven based on `primaryLandUse` property.
 
 ### Coordinate System
 
