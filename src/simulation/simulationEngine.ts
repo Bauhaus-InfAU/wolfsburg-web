@@ -1,5 +1,6 @@
 import type { SimulationParams, SimulationStats, LandUse } from '../config/types';
 import { SIMULATION_DEFAULTS, DESTINATION_LAND_USES } from '../config/constants';
+import { MID_LAND_USE_WEIGHTS } from '../data/midMobilityData';
 import { BuildingStore } from '../data/buildingStore';
 import { StreetGraph } from '../data/streetGraph';
 import { ODMatrix } from './odMatrix';
@@ -28,6 +29,9 @@ export class SimulationEngine {
   };
 
   private totalDistanceSum: number = 0;
+  private maxActiveAgents: number;
+  private baselineWeight: number; // Sum of all destination land use weights
+  private effectiveMaxAgents: number; // Scaled by enabled land uses
 
   // Callbacks
   public onUpdate: ((agents: Agent[], stats: SimulationStats) => void) | null = null;
@@ -37,7 +41,19 @@ export class SimulationEngine {
     this.buildingStore = buildingStore;
     this.odMatrix = new ODMatrix();
     this.pathfinder = new Pathfinder(streetGraph);
-    this.agentPool = new AgentPool(SIMULATION_DEFAULTS.MAX_ACTIVE_AGENTS);
+
+    // Calculate max agents based on total residents
+    const totalResidents = buildingStore.getTotalResidents();
+    this.maxActiveAgents = Math.max(
+      SIMULATION_DEFAULTS.MIN_ACTIVE_AGENTS,
+      Math.round(totalResidents * SIMULATION_DEFAULTS.ACTIVE_AGENT_RATIO)
+    );
+
+    // Calculate baseline weight (sum of all destination land use weights)
+    this.baselineWeight = this.calculateLandUseWeight(DESTINATION_LAND_USES);
+    this.effectiveMaxAgents = this.maxActiveAgents;
+
+    this.agentPool = new AgentPool(this.maxActiveAgents);
 
     // Initialize default params
     // Note: decay and maxDistance now handled per-land-use via MiD data
@@ -55,6 +71,34 @@ export class SimulationEngine {
       this.odMatrix,
       this.pathfinder,
       this.buildingStore.residential
+    );
+  }
+
+  /**
+   * Calculate the sum of MiD weights for given land uses.
+   */
+  private calculateLandUseWeight(landUses: Iterable<LandUse>): number {
+    let total = 0;
+    for (const landUse of landUses) {
+      total += MID_LAND_USE_WEIGHTS[landUse] || 0;
+    }
+    return total;
+  }
+
+  /**
+   * Update trip generation rate and max agents based on enabled land uses.
+   */
+  private updateLandUseWeightMultiplier(): void {
+    const enabledWeight = this.calculateLandUseWeight(this.params.enabledLandUses);
+    const multiplier = this.baselineWeight > 0 ? enabledWeight / this.baselineWeight : 0;
+
+    // Update trip generator
+    this.tripGenerator.setLandUseWeightMultiplier(multiplier);
+
+    // Update effective max agents
+    this.effectiveMaxAgents = Math.max(
+      SIMULATION_DEFAULTS.MIN_ACTIVE_AGENTS,
+      Math.round(this.maxActiveAgents * multiplier)
     );
   }
 
@@ -127,6 +171,7 @@ export class SimulationEngine {
       this.params.enabledLandUses.delete(landUse);
     }
     this.recalculateODMatrix();
+    this.updateLandUseWeightMultiplier();
   }
 
   private update(timestamp: number): void {
@@ -138,8 +183,8 @@ export class SimulationEngine {
     // Cap delta to avoid huge jumps
     const cappedDelta = Math.min(deltaMs, 100);
 
-    // Generate new trips
-    if (this.agentPool.getActiveAgents().length < SIMULATION_DEFAULTS.MAX_ACTIVE_AGENTS) {
+    // Generate new trips (use effectiveMaxAgents which scales with enabled land uses)
+    if (this.agentPool.getActiveAgents().length < this.effectiveMaxAgents) {
       const trips = this.tripGenerator.generateTrips(
         cappedDelta,
         SIMULATION_DEFAULTS.TIME_SCALE * this.speed
@@ -209,5 +254,17 @@ export class SimulationEngine {
 
   get running(): boolean {
     return this.isRunning;
+  }
+
+  getMaxActiveAgents(): number {
+    return this.maxActiveAgents;
+  }
+
+  getEffectiveMaxAgents(): number {
+    return this.effectiveMaxAgents;
+  }
+
+  getTotalResidents(): number {
+    return this.buildingStore.getTotalResidents();
   }
 }

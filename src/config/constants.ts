@@ -63,6 +63,9 @@ export const DESTINATION_LAND_USES: LandUse[] = [
   'Generic Utilities',
 ];
 
+// Residential density: German cities average ~40.9 sqm per person
+export const SQM_PER_PERSON = 40.9;
+
 // Simulation defaults
 // Note: Coordinates are in degrees (Heron GeoJSON export converts to WGS84)
 // Distance calculations convert to meters internally (1 degree ≈ 111km)
@@ -73,7 +76,9 @@ export const SIMULATION_DEFAULTS = {
   // Trip generation
   MIN_TRIP_DISTANCE: 50, // 50 meters minimum
   MAX_TRIP_DISTANCE: 2000, // 2000 meters maximum
-  BASE_TRIPS_PER_FLOOR: 0.3, // trips per floor per simulation minute
+  // MiD 2023: ~0.68 walking trips per person per day = 0.00047 per minute
+  // Scaled up for visible simulation activity
+  BASE_TRIPS_PER_RESIDENT: 0.02, // trips per resident per simulation minute
   DWELL_TIME_MS: 2000, // time at destination (2 seconds real time)
 
   // Distance decay: exp(-beta * distance_in_meters)
@@ -84,7 +89,10 @@ export const SIMULATION_DEFAULTS = {
   TIME_SCALE: 5, // 1 real second = 5 simulated seconds
 
   // Performance limits
-  MAX_ACTIVE_AGENTS: 5000,
+  // Max active agents = total residents × ACTIVE_AGENT_RATIO
+  // ~10% of population walking at any given time during peak
+  ACTIVE_AGENT_RATIO: 0.1,
+  MIN_ACTIVE_AGENTS: 100, // minimum for small areas
   PATH_CACHE_SIZE: 1000,
 
   // Rendering

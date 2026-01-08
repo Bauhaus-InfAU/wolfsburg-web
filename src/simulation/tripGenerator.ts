@@ -9,6 +9,7 @@ export class TripGenerator {
   private residentialBuildings: Building[];
   private accumulators: Map<string, number> = new Map();
   private spawnMultiplier: number = 1.0;
+  private landUseWeightMultiplier: number = 1.0;
 
   constructor(odMatrix: ODMatrix, pathfinder: Pathfinder, residentialBuildings: Building[]) {
     this.odMatrix = odMatrix;
@@ -23,6 +24,19 @@ export class TripGenerator {
 
   setSpawnMultiplier(multiplier: number): void {
     this.spawnMultiplier = multiplier;
+  }
+
+  /**
+   * Set the land use weight multiplier.
+   * This scales trip generation based on enabled land use weights.
+   * @param multiplier - Ratio of enabled weights to total weights (0-1)
+   */
+  setLandUseWeightMultiplier(multiplier: number): void {
+    this.landUseWeightMultiplier = multiplier;
+  }
+
+  getLandUseWeightMultiplier(): number {
+    return this.landUseWeightMultiplier;
   }
 
   /**
@@ -71,8 +85,13 @@ export class TripGenerator {
 
   private getTripRate(building: Building): number {
     // Trips per simulated second
-    // BASE_TRIPS_PER_FLOOR is trips per floor per simulated minute
-    const tripsPerMinute = building.floors * SIMULATION_DEFAULTS.BASE_TRIPS_PER_FLOOR;
+    // BASE_TRIPS_PER_RESIDENT is trips per resident per simulated minute
+    // estimatedResidents is based on residential area / 40.9 sqm per person
+    // landUseWeightMultiplier scales by enabled land use weights (MiD 2023)
+    const tripsPerMinute =
+      building.estimatedResidents *
+      SIMULATION_DEFAULTS.BASE_TRIPS_PER_RESIDENT *
+      this.landUseWeightMultiplier;
     return (tripsPerMinute / 60) * this.spawnMultiplier;
   }
 
@@ -92,9 +111,20 @@ export class TripGenerator {
     let total = 0;
     for (const building of this.residentialBuildings) {
       if (this.odMatrix.hasDestinations(building.id)) {
-        total += building.floors * SIMULATION_DEFAULTS.BASE_TRIPS_PER_FLOOR * this.spawnMultiplier;
+        total +=
+          building.estimatedResidents *
+          SIMULATION_DEFAULTS.BASE_TRIPS_PER_RESIDENT *
+          this.landUseWeightMultiplier *
+          this.spawnMultiplier;
       }
     }
     return total;
+  }
+
+  /**
+   * Get total estimated residents across all residential buildings.
+   */
+  getTotalResidents(): number {
+    return this.residentialBuildings.reduce((sum, b) => sum + b.estimatedResidents, 0);
   }
 }

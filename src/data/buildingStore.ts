@@ -7,7 +7,7 @@ import type {
   LandUse,
   SpatialItem,
 } from '../config/types';
-import { LAND_USE_WEIGHTS } from '../config/constants';
+import { LAND_USE_WEIGHTS, SQM_PER_PERSON } from '../config/constants';
 
 // All land use keys to check
 const LAND_USE_KEYS: LandUse[] = [
@@ -93,11 +93,23 @@ export class BuildingStore {
     const floors = typeof props.Floors === 'string' ? parseInt(props.Floors, 10) : props.Floors;
     const height = typeof props.Height === 'string' ? parseFloat(props.Height) : props.Height;
 
+    // Extract residential area (sqm) - stored as number or string in GeoJSON
+    const residentialAreaRaw = props['Generic Residential'];
+    const residentialArea =
+      typeof residentialAreaRaw === 'string'
+        ? parseFloat(residentialAreaRaw)
+        : residentialAreaRaw || 0;
+
+    // Calculate estimated residents based on German average (~40.9 sqm per person)
+    const estimatedResidents = residentialArea > 0 ? residentialArea / SQM_PER_PERSON : 0;
+
     return {
       id,
       centroid,
       floors: floors || 1,
       height: height || 3,
+      residentialArea,
+      estimatedResidents,
       landUses,
       primaryLandUse,
       feature,
@@ -215,5 +227,20 @@ export class BuildingStore {
       [minLat, minLng],
       [maxLat, maxLng],
     ];
+  }
+
+  /**
+   * Get total estimated residents across all residential buildings.
+   * Based on residential floor area / 40.9 sqm per person.
+   */
+  getTotalResidents(): number {
+    return this.residential.reduce((sum, b) => sum + b.estimatedResidents, 0);
+  }
+
+  /**
+   * Get total residential floor area in sqm.
+   */
+  getTotalResidentialArea(): number {
+    return this.residential.reduce((sum, b) => sum + b.residentialArea, 0);
   }
 }

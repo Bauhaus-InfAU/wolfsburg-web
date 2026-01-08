@@ -40,6 +40,8 @@ async function main() {
     console.log(`Loaded ${buildingStore.buildings.size} buildings`);
     console.log(`Residential: ${buildingStore.residential.length}`);
     console.log(`Destinations: ${buildingStore.destinations.length}`);
+    console.log(`Total residential area: ${Math.round(buildingStore.getTotalResidentialArea()).toLocaleString()} sqm`);
+    console.log(`Estimated residents: ${Math.round(buildingStore.getTotalResidents()).toLocaleString()} (@ 40.9 sqm/person)`);
 
     // Calculate data bounds
     const bounds = buildingStore.getBounds();
@@ -89,6 +91,7 @@ async function main() {
     // Initialize simulation engine
     updateLoadingStatus('Initializing simulation...');
     const engine = new SimulationEngine(buildingStore, streetGraph);
+    console.log(`Max active agents: ${engine.getMaxActiveAgents().toLocaleString()} (10% of residents)`);
 
     // Initialize renderer
     const agentRenderer = new AgentRenderer(mapView);

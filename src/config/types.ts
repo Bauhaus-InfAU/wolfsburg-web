@@ -64,6 +64,8 @@ export interface Building {
   centroid: [number, number]; // [lng, lat]
   floors: number;
   height: number;
+  residentialArea: number; // sqm of residential floor area
+  estimatedResidents: number; // based on ~40.9 sqm per person
   landUses: LandUse[];
   primaryLandUse: LandUse;
   feature: BuildingFeature;

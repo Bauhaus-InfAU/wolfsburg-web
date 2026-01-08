@@ -52,4 +52,12 @@ export class AgentPool {
   get poolSize(): number {
     return this.pool.length;
   }
+
+  get maxActiveAgents(): number {
+    return this.maxSize;
+  }
+
+  setMaxSize(newMaxSize: number): void {
+    this.maxSize = newMaxSize;
+  }
 }
