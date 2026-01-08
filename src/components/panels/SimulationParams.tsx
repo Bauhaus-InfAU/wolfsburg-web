@@ -1,16 +1,15 @@
 import { Slider } from '@/components/ui/slider';
-import { Label } from '@/components/ui/label';
 import { useSimulation } from '@/hooks/useSimulation';
 
 export function SimulationParams() {
   const { speed, spawnRate, setSpeed, setSpawnRate } = useSimulation();
 
   return (
-    <div className="space-y-6">
-      <div className="space-y-3">
+    <div className="space-y-4">
+      <div className="space-y-2">
         <div className="flex justify-between items-baseline">
-          <Label className="text-muted-foreground text-xs">Speed</Label>
-          <span className="font-mono text-sm font-medium">{speed}x</span>
+          <span className="text-[11px] text-muted-foreground">Speed</span>
+          <span className="text-xs font-medium tabular-nums">{speed}x</span>
         </div>
         <Slider
           value={[speed]}
@@ -21,10 +20,10 @@ export function SimulationParams() {
         />
       </div>
 
-      <div className="space-y-3">
+      <div className="space-y-2">
         <div className="flex justify-between items-baseline">
-          <Label className="text-muted-foreground text-xs">Spawn Rate</Label>
-          <span className="font-mono text-sm font-medium">{spawnRate.toFixed(1)}</span>
+          <span className="text-[11px] text-muted-foreground">Spawn Rate</span>
+          <span className="text-xs font-medium tabular-nums">{spawnRate.toFixed(1)}</span>
         </div>
         <Slider
           value={[spawnRate]}

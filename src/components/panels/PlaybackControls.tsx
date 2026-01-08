@@ -6,31 +6,34 @@ export function PlaybackControls() {
   const { isRunning, play, pause, reset } = useSimulation();
 
   return (
-    <div className="flex gap-2.5">
+    <div className="flex gap-2">
       <Button
-        variant="outline"
-        className="flex-1 hover:bg-primary hover:text-primary-foreground hover:border-primary"
+        variant={isRunning ? "outline" : "default"}
+        size="sm"
+        className="flex-1"
         disabled={isRunning}
         onClick={play}
       >
-        <Play className="w-4 h-4 mr-2" />
+        <Play className="w-3.5 h-3.5 mr-1.5" />
         Play
       </Button>
       <Button
         variant="outline"
+        size="sm"
         className="flex-1"
         disabled={!isRunning}
         onClick={pause}
       >
-        <Pause className="w-4 h-4 mr-2" />
+        <Pause className="w-3.5 h-3.5 mr-1.5" />
         Pause
       </Button>
       <Button
         variant="outline"
+        size="sm"
         className="flex-1"
         onClick={reset}
       >
-        <RotateCcw className="w-4 h-4 mr-2" />
+        <RotateCcw className="w-3.5 h-3.5 mr-1.5" />
         Reset
       </Button>
     </div>

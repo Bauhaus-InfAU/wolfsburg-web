@@ -33,8 +33,9 @@ interface SimulationContextValue {
   setShowUsageHeatmap: (show: boolean) => void;
   setShowAgents: (show: boolean) => void;
 
-  // Map initialization
+  // Map initialization and resize
   initializeMap: (containerId: string) => void;
+  resizeMap: () => void;
 }
 
 const SimulationContext = createContext<SimulationContextValue | null>(null);
@@ -257,6 +258,10 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
     engineRef.current?.toggleLandUse(landUse, enabled);
   }, []);
 
+  const resizeMap = useCallback(() => {
+    mapViewRef.current?.resizeCanvas();
+  }, []);
+
   const value: SimulationContextValue = {
     isLoading,
     loadingStatus,
@@ -276,6 +281,7 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
     setShowUsageHeatmap,
     setShowAgents,
     initializeMap,
+    resizeMap,
   };
 
   return (

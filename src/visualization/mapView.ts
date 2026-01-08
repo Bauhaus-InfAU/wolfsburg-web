@@ -98,8 +98,9 @@ export class MapView {
     this.canvas.style.cursor = 'grab';
   }
 
-  private resizeCanvas(): void {
+  public resizeCanvas(): void {
     const rect = this.canvas.parentElement!.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) return;
     this.canvas.width = rect.width;
     this.canvas.height = rect.height;
     this.agentCanvas.width = rect.width;

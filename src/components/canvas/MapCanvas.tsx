@@ -3,7 +3,7 @@ import { useSimulation } from '@/hooks/useSimulation';
 
 export function MapCanvas() {
   const containerRef = useRef<HTMLDivElement>(null);
-  const { initializeMap } = useSimulation();
+  const { initializeMap, resizeMap } = useSimulation();
   const initializedRef = useRef(false);
 
   useEffect(() => {
@@ -12,6 +12,22 @@ export function MapCanvas() {
       initializeMap('map');
     }
   }, [initializeMap]);
+
+  // Handle container resize
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const resizeObserver = new ResizeObserver(() => {
+      resizeMap();
+    });
+
+    resizeObserver.observe(container);
+
+    return () => {
+      resizeObserver.disconnect();
+    };
+  }, [resizeMap]);
 
   return (
     <div
