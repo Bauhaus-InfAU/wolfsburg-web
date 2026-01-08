@@ -5,7 +5,6 @@ import { StreetGraph } from '../data/streetGraph';
 import { ODMatrix } from './odMatrix';
 import { Pathfinder } from './pathfinder';
 import { TripGenerator } from './tripGenerator';
-import { createExponentialDecay } from './distanceDecay';
 import { Agent } from '../agents/agent';
 import { AgentPool } from '../agents/agentPool';
 
@@ -41,10 +40,9 @@ export class SimulationEngine {
     this.agentPool = new AgentPool(SIMULATION_DEFAULTS.MAX_ACTIVE_AGENTS);
 
     // Initialize default params
+    // Note: decay and maxDistance now handled per-land-use via MiD data
     this.params = {
       spawnRate: 1.0,
-      decayBeta: SIMULATION_DEFAULTS.DECAY_BETA,
-      maxDistance: SIMULATION_DEFAULTS.MAX_TRIP_DISTANCE,
       speed: 1,
       enabledLandUses: new Set(DESTINATION_LAND_USES),
     };
@@ -61,12 +59,10 @@ export class SimulationEngine {
   }
 
   recalculateODMatrix(): void {
-    const decayFn = createExponentialDecay(this.params.decayBeta, this.params.maxDistance);
-
+    // Uses per-land-use decay calibrated from MiD 2023 data
     this.odMatrix.calculate(
       this.buildingStore.residential,
       this.buildingStore.destinations,
-      decayFn,
       this.params.enabledLandUses
     );
   }
@@ -121,15 +117,8 @@ export class SimulationEngine {
     this.tripGenerator.setSpawnMultiplier(rate);
   }
 
-  setDecayBeta(beta: number): void {
-    this.params.decayBeta = beta;
-    this.recalculateODMatrix();
-  }
-
-  setMaxDistance(distance: number): void {
-    this.params.maxDistance = distance;
-    this.recalculateODMatrix();
-  }
+  // Note: setDecayBeta and setMaxDistance removed - decay is now per-land-use
+  // based on MiD 2023 calibrated parameters
 
   toggleLandUse(landUse: LandUse, enabled: boolean): void {
     if (enabled) {

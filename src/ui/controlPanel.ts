@@ -15,10 +15,8 @@ export class ControlPanel {
   private speedValue: HTMLSpanElement;
   private spawnSlider: HTMLInputElement;
   private spawnValue: HTMLSpanElement;
-  private decaySlider: HTMLInputElement;
-  private decayValue: HTMLSpanElement;
-  private distanceSlider: HTMLInputElement;
-  private distanceValue: HTMLSpanElement;
+  // Note: decay and distance sliders removed - now using MiD 2023 calibrated
+  // per-land-use decay parameters
 
   constructor(engine: SimulationEngine) {
     this.engine = engine;
@@ -31,13 +29,10 @@ export class ControlPanel {
     this.speedValue = document.getElementById('speed-value') as HTMLSpanElement;
     this.spawnSlider = document.getElementById('spawn-slider') as HTMLInputElement;
     this.spawnValue = document.getElementById('spawn-value') as HTMLSpanElement;
-    this.decaySlider = document.getElementById('decay-slider') as HTMLInputElement;
-    this.decayValue = document.getElementById('decay-value') as HTMLSpanElement;
-    this.distanceSlider = document.getElementById('distance-slider') as HTMLInputElement;
-    this.distanceValue = document.getElementById('distance-value') as HTMLSpanElement;
 
     this.setupEventListeners();
     this.createLandUseToggles();
+    this.hideObsoleteControls();
   }
 
   private setupEventListeners(): void {
@@ -70,20 +65,24 @@ export class ControlPanel {
       this.engine.setSpawnRate(rate);
       this.spawnValue.textContent = rate.toFixed(1);
     });
+  }
 
-    // Decay slider
-    this.decaySlider.addEventListener('input', () => {
-      const beta = parseFloat(this.decaySlider.value);
-      this.engine.setDecayBeta(beta);
-      this.decayValue.textContent = beta.toFixed(4);
-    });
+  /**
+   * Hide decay and distance controls that are now obsolete.
+   * These are replaced by MiD 2023 calibrated per-land-use parameters.
+   */
+  private hideObsoleteControls(): void {
+    // Hide decay slider container
+    const decaySlider = document.getElementById('decay-slider');
+    if (decaySlider?.parentElement) {
+      decaySlider.parentElement.style.display = 'none';
+    }
 
-    // Distance slider
-    this.distanceSlider.addEventListener('input', () => {
-      const distance = parseFloat(this.distanceSlider.value);
-      this.engine.setMaxDistance(distance);
-      this.distanceValue.textContent = distance.toFixed(0);
-    });
+    // Hide distance slider container
+    const distanceSlider = document.getElementById('distance-slider');
+    if (distanceSlider?.parentElement) {
+      distanceSlider.parentElement.style.display = 'none';
+    }
   }
 
   private updatePlaybackButtons(isPlaying: boolean): void {

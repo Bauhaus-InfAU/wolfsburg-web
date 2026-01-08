@@ -1,3 +1,6 @@
+import type { LandUse } from '../config/types';
+import { MID_DECAY_BETA, MID_MAX_DISTANCE } from '../data/midMobilityData';
+
 export type DistanceDecayFn = (distance: number) => number;
 
 /**
@@ -49,4 +52,36 @@ export function createGaussianDecay(sigma: number, maxDistance: number): Distanc
     if (distance < 0) return 0;
     return Math.exp(-(distance * distance) / twoSigmaSquared);
   };
+}
+
+/**
+ * Creates a land-use-specific exponential decay function.
+ * Uses MiD 2023 calibrated parameters for beta and max distance.
+ *
+ * @param landUse - The destination land use type
+ * @returns Distance decay function calibrated for that land use
+ */
+export function createLandUseDecay(landUse: LandUse): DistanceDecayFn {
+  const beta = MID_DECAY_BETA[landUse];
+  const maxDist = MID_MAX_DISTANCE[landUse];
+  return (distance: number): number => {
+    if (distance > maxDist || distance < 0) return 0;
+    return Math.exp(-beta * distance);
+  };
+}
+
+/**
+ * Get the decay beta for a specific land use.
+ * Useful for UI display or debugging.
+ */
+export function getDecayBeta(landUse: LandUse): number {
+  return MID_DECAY_BETA[landUse];
+}
+
+/**
+ * Get the max distance for a specific land use.
+ * Useful for UI display or debugging.
+ */
+export function getMaxDistance(landUse: LandUse): number {
+  return MID_MAX_DISTANCE[landUse];
 }

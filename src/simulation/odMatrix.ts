@@ -1,5 +1,5 @@
 import type { Building, ODEntry, LandUse } from '../config/types';
-import type { DistanceDecayFn } from './distanceDecay';
+import { createLandUseDecay } from './distanceDecay';
 import { LAND_USE_WEIGHTS, MIN_OD_WEIGHT } from '../config/constants';
 import { haversineDistance } from '../data/streetGraph';
 
@@ -8,16 +8,15 @@ export class ODMatrix {
 
   /**
    * Calculate the O-D probability matrix.
+   * Uses per-land-use distance decay calibrated from MiD 2023 data.
    *
    * @param origins - Residential buildings (trip origins)
    * @param destinations - Non-residential buildings (trip destinations)
-   * @param decayFn - Distance decay function
    * @param enabledLandUses - Set of enabled land use types
    */
   calculate(
     origins: Building[],
     destinations: Building[],
-    decayFn: DistanceDecayFn,
     enabledLandUses: Set<LandUse>
   ): void {
     this.matrix.clear();
@@ -34,7 +33,11 @@ export class ODMatrix {
         // Calculate distance
         const distance = haversineDistance(origin.centroid, dest.centroid);
 
-        // Apply distance decay
+        // Get the primary land use for decay calculation
+        const primaryLandUse = this.getPrimaryLandUse(dest, enabledLandUses);
+
+        // Apply land-use-specific distance decay (MiD calibrated)
+        const decayFn = createLandUseDecay(primaryLandUse);
         const decay = decayFn(distance);
         if (decay <= 0) continue;
 
@@ -66,6 +69,25 @@ export class ODMatrix {
         this.matrix.set(origin.id, entries);
       }
     }
+  }
+
+  /**
+   * Get the primary (highest weighted) land use for a building.
+   */
+  private getPrimaryLandUse(building: Building, enabledLandUses: Set<LandUse>): LandUse {
+    let bestLandUse: LandUse = building.primaryLandUse;
+    let bestWeight = 0;
+
+    for (const landUse of building.landUses) {
+      if (!enabledLandUses.has(landUse)) continue;
+      const weight = LAND_USE_WEIGHTS[landUse];
+      if (weight > bestWeight) {
+        bestWeight = weight;
+        bestLandUse = landUse;
+      }
+    }
+
+    return bestLandUse;
   }
 
   private calculateAttraction(building: Building, enabledLandUses: Set<LandUse>): number {

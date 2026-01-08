@@ -21,6 +21,7 @@ This is a browser-based pedestrian flow simulation for the city of Weimar, built
 **Data Layer** (`src/data/`)
 - `BuildingStore` - Loads and indexes building GeoJSON, categorizes by land use. Uses RBush for spatial queries.
 - `StreetGraph` - Builds a graph from street GeoJSON for pathfinding. Nodes are coordinate-keyed, edges are bidirectional.
+- `midMobilityData` - MiD 2023 (Mobilität in Deutschland) calibration data for land use weights and distance decay.
 
 **Simulation Layer** (`src/simulation/`)
 - `SimulationEngine` - Main loop using `requestAnimationFrame`. Manages agent spawning, updates, and lifecycle.
@@ -53,10 +54,18 @@ Coordinates are in degrees (WGS84) - the Heron plugin converts Rhino's meter coo
 
 See `src/config/constants.ts` for tunable parameters:
 - `WALKING_SPEED`: 1.4 m/s
-- `DECAY_BETA`: 0.002 (controls distance penalty)
 - `TIME_SCALE`: 5 (1 real second = 5 simulated seconds)
 - `MAX_ACTIVE_AGENTS`: 5000
-- `LAND_USE_WEIGHTS`: Attraction weights by destination type
+- `LAND_USE_WEIGHTS`: Attraction weights calibrated from MiD 2023 pedestrian trip frequencies
+
+### MiD 2023 Calibration
+
+The simulation uses empirical data from "Mobilität in Deutschland 2023" (German national mobility survey) for realistic pedestrian behavior:
+- **Land use weights** derived from trip frequency by purpose (retail dominates at ~55%)
+- **Per-land-use distance decay** - each destination type has its own decay beta based on observed trip durations
+- **Per-land-use max distance** - sports/culture trips can be longer than retail trips
+
+See `src/data/midMobilityData.ts` for the calibration parameters.
 
 ### Land Use Types
 

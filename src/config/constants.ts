@@ -1,24 +1,9 @@
 import type { LandUse } from './types';
+import { MID_LAND_USE_WEIGHTS } from '../data/midMobilityData';
 
 // Land use attraction weights (higher = more attractive as destination)
-export const LAND_USE_WEIGHTS: Record<LandUse, number> = {
-  'Generic Retail': 1.0,
-  'Generic Food and Beverage Service': 0.9,
-  'Generic Entertainment': 0.8,
-  'Generic Service': 0.7,
-  'Generic Health and Wellbeing': 0.6,
-  'Generic Education': 0.6,
-  'Generic Office Building': 0.5,
-  'Generic Culture': 0.5,
-  'Generic Civic Function': 0.4,
-  'Generic Sport Facility': 0.4,
-  'Generic Light Industrial': 0.3,
-  'Generic Accommodation': 0.3,
-  'Generic Transportation Service': 0.2,
-  'Generic Utilities': 0.1,
-  'Undefined Land use': 0.1,
-  'Generic Residential': 0.0, // Residential doesn't attract trips
-};
+// Calibrated from MiD 2023 (Mobilität in Deutschland) pedestrian trip data
+export const LAND_USE_WEIGHTS: Record<LandUse, number> = MID_LAND_USE_WEIGHTS;
 
 // Colors for land use visualization (warm, earthy palette for light theme)
 export const LAND_USE_COLORS: Record<LandUse, string> = {

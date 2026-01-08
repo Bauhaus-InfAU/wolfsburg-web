@@ -106,10 +106,10 @@ export interface Trip {
 export type AgentState = 'toDestination' | 'atDestination' | 'returning' | 'completed';
 
 // Simulation parameters
+// Note: decayBeta and maxDistance removed - now using per-land-use
+// parameters from MiD 2023 calibration
 export interface SimulationParams {
   spawnRate: number;
-  decayBeta: number;
-  maxDistance: number;
   speed: number;
   enabledLandUses: Set<LandUse>;
 }
