@@ -14,7 +14,30 @@ No test framework is configured.
 
 ## Architecture
 
-This is a browser-based pedestrian flow simulation for the city of Weimar, built with TypeScript and Vite. The simulation models trips from residential buildings to various destination types using an origin-destination matrix with distance decay.
+This is a browser-based pedestrian flow simulation for the city of Weimar, built with React, TypeScript, and Vite. The UI uses shadcn/ui components with Tailwind CSS. The simulation models trips from residential buildings to various destination types using an origin-destination matrix with distance decay.
+
+### UI Layer (`src/components/`)
+
+**shadcn/ui Components** (`src/components/ui/`)
+- `Button`, `Slider`, `Checkbox`, `Label`, `Tooltip` - Radix UI primitives styled with Tailwind
+
+**Panel Components** (`src/components/panels/`)
+- `ControlPanel` - Main sidebar container with all controls
+- `PlaybackControls` - Play/Pause/Reset buttons
+- `SimulationParams` - Speed and spawn rate sliders
+- `LandUseToggles` - Checkboxes to filter destination types
+- `VisualizationToggles` - Show/hide agents and street usage heatmap
+- `StatsDisplay` - Active agents and total trips counters
+- `Legend` - Color-coded land use legend
+
+**Other Components**
+- `App` - Root component with layout
+- `MapCanvas` - Canvas container, initializes MapView via ref
+- `LoadingOverlay` - Full-screen loading spinner
+
+**State Management** (`src/context/`)
+- `SimulationContext` - React context wrapping SimulationEngine, exposes state and actions to components
+- `useSimulation` hook - Access simulation state and controls from any component
 
 ### Core Components
 
