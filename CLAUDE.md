@@ -20,8 +20,9 @@ This is a browser-based pedestrian flow simulation for the city of Weimar, built
 
 **shadcn/ui Components** (`src/components/ui/`)
 - `Button`, `Slider`, `Checkbox`, `Label`, `Tooltip`, `Collapsible` - Radix UI primitives styled with Tailwind
+- `BottomSheet` - Mobile-only slide-up panel (40vh height) with close button
 
-**Panel Components** (`src/components/panels/`)
+**Panel Components** (`src/components/panels/`) - Desktop only
 - `ControlPanel` - Resizable sidebar (280-480px) wrapped in a card with collapsible sections organized into groups:
   - **Controls**: Playback, Parameters
   - **Filters**: Land Use Types, Display Options
@@ -33,8 +34,13 @@ This is a browser-based pedestrian flow simulation for the city of Weimar, built
 - `StatsDisplay` - Active agents and total trips counters
 - `Legend` - Color-coded land use legend (collapsed by default)
 
+**Mobile Components** (`src/components/mobile/`)
+- `MobileFloatingControls` - Bottom floating bar with Settings, Simulate, and Insights buttons
+- `MobileControlsContent` - Settings panel content for bottom sheet (reuses panel components)
+- `MobileDataContent` - Insights panel content for bottom sheet (reuses chart components)
+
 **Other Components**
-- `App` - Root component with flex layout
+- `App` - Root component with responsive layout (conditionally renders desktop panels or mobile UI)
 - `MapCanvas` - Canvas container with ResizeObserver for responsive canvas sizing
 - `LoadingOverlay` - Full-screen loading spinner
 - `PathPreview` - Interactive path preview with draggable A/B markers
@@ -43,6 +49,16 @@ This is a browser-based pedestrian flow simulation for the city of Weimar, built
 **State Management** (`src/context/`)
 - `SimulationContext` - React context wrapping SimulationEngine, exposes state and actions to components
 - `useSimulation` hook - Access simulation state and controls from any component
+
+**Hooks** (`src/hooks/`)
+- `useMobileLayout` - Detects mobile viewport (<768px) and manages bottom sheet panel state
+
+**Custom Icons** (`public/icons/`)
+- `play.svg`, `play-white.svg`, `pause.svg`, `reset.svg` - Playback controls
+- `settings.svg` - Settings panel icon
+- `insights.svg` - Data/Insights panel icon
+- `main.svg` - App logo (coral crosshair)
+- `cursor.svg`, `cursor-active.svg` - Map cursor icons
 
 **Theming** (`src/index.css`, `tailwind.config.js`)
 - Roboto Mono monospace font throughout
@@ -133,3 +149,19 @@ See `src/data/midMobilityData.ts` for the calibration parameters.
 ### Land Use Types
 
 16 land use categories defined in `src/config/types.ts`. Residential buildings generate trips; all others are potential destinations. Each building stores floor area per land use in `landUseAreas: Map<LandUse, number>`.
+
+### Responsive Layout
+
+The app uses conditional rendering based on viewport width (breakpoint: 768px).
+
+**Desktop (≥768px)**
+- Three-column layout: ControlPanel (left) | Map (center) | DataPanel (right)
+- Panels are resizable with drag handles
+- DataPanel can be collapsed
+
+**Mobile (<768px)**
+- Map fills entire viewport
+- Floating control bar at bottom with 3 buttons: Settings | Simulate | Insights
+- Panels open as bottom sheets (40vh height) that slide up from bottom
+- Map remains visible and interactive when panels are open
+- Bottom sheet content only renders when open (fixes chart dimension issues)
