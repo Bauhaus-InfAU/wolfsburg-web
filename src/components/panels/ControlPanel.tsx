@@ -87,7 +87,7 @@ export function ControlPanel() {
             </CollapsibleSection>
 
             {/* Parameters */}
-            <CollapsibleSection title="Parameters" defaultOpen>
+            <CollapsibleSection title="Simulation Parameters" defaultOpen>
               <SimulationParams />
             </CollapsibleSection>
 

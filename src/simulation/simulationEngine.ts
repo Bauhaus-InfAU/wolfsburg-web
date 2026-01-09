@@ -190,6 +190,13 @@ export class SimulationEngine {
     this.onLandUseToggle?.(this.params.enabledLandUses);
   }
 
+  setEnabledLandUses(landUses: Set<LandUse>): void {
+    this.params.enabledLandUses = new Set(landUses);
+    this.recalculateODMatrix();
+    this.updateLandUseWeightMultiplier();
+    this.onLandUseToggle?.(this.params.enabledLandUses);
+  }
+
   getEnabledLandUses(): Set<LandUse> {
     return this.params.enabledLandUses;
   }

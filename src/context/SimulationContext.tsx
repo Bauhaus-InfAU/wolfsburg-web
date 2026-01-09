@@ -50,6 +50,7 @@ interface SimulationContextValue {
   setSpeed: (speed: number) => void;
   setSpawnRate: (rate: number) => void;
   toggleLandUse: (landUse: LandUse, enabled: boolean) => void;
+  setEnabledLandUses: (landUses: Set<LandUse>) => void;
   setShowUsageHeatmap: (show: boolean) => void;
   setShowAgents: (show: boolean) => void;
   setShowTopStreets: (show: boolean) => void;
@@ -293,8 +294,13 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
         mapView.setLandUseFilter(newEnabledLandUses);
       };
 
-      // Note: onViewChange callback is set up in the useEffect below
-      // to ensure it has access to the current showAgents value
+      // Set up view change callback for agent rendering during pause/zoom
+      // This ensures agents re-render when map is panned/zoomed while paused
+      mapView.onViewChange = () => {
+        if (agentRendererRef.current && engineRef.current) {
+          agentRendererRef.current.render(engineRef.current.getAgents());
+        }
+      };
 
       // Wire up building click callback
       mapView.onBuildingClick = (buildingId, coordinates) => {
@@ -564,6 +570,9 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
     setSpeed,
     setSpawnRate,
     toggleLandUse,
+    setEnabledLandUses: (landUses: Set<LandUse>) => {
+      engineRef.current?.setEnabledLandUses(landUses);
+    },
     setShowUsageHeatmap,
     setShowAgents,
     setShowTopStreets,
