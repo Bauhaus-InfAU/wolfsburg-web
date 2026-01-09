@@ -41,14 +41,14 @@ export function ControlPanel() {
 
   return (
     <div
-      className="h-full p-3 max-md:p-2 max-md:w-full max-md:h-[45vh]"
+      className="h-full p-3"
       style={{ width: `${width}px` }}
     >
       <div className="relative h-full bg-card rounded-xl border border-border shadow-sm overflow-hidden flex">
         {/* Resize Handle */}
         <div
           className={cn(
-            "absolute right-0 top-0 bottom-0 w-3 cursor-col-resize z-20 flex items-center justify-center group max-md:hidden",
+            "absolute right-0 top-0 bottom-0 w-3 cursor-col-resize z-20 flex items-center justify-center group",
             isResizing && "bg-primary/10"
           )}
           onMouseDown={handleMouseDown}

@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { cn } from '@/lib/utils';
-import { ChevronRight, BarChart3 } from 'lucide-react';
+import { ChevronRight } from 'lucide-react';
 import { useSimulation } from '@/hooks/useSimulation';
 import { useUrbanInsights } from '@/hooks/useUrbanInsights';
 import { TopStreets } from './charts/TopStreets';
@@ -54,11 +54,11 @@ export function DataPanel() {
   }
 
   return (
-    <div className="relative h-full flex max-md:w-full max-md:h-auto max-md:absolute max-md:z-20">
+    <div className="relative h-full flex-shrink-0 flex">
       {/* Toggle Button - outside collapsible area */}
       <button
         onClick={() => setIsCollapsed(!isCollapsed)}
-        className="absolute top-1/2 -translate-y-1/2 left-0 -translate-x-full z-30 bg-card border border-border rounded-l-lg p-1.5 shadow-sm hover:bg-accent/50 transition-colors max-md:hidden"
+        className="absolute top-1/2 -translate-y-1/2 left-0 -translate-x-full z-30 bg-card border border-border rounded-l-lg p-1.5 shadow-sm hover:bg-accent/50 transition-colors"
         title={isCollapsed ? "Show insights" : "Hide insights"}
       >
         <ChevronRight
@@ -67,20 +67,6 @@ export function DataPanel() {
             isCollapsed && "rotate-180"
           )}
         />
-      </button>
-
-      {/* Mobile Toggle Button */}
-      <button
-        onClick={() => setIsCollapsed(!isCollapsed)}
-        className={cn(
-          "hidden max-md:flex absolute bottom-0 left-1/2 -translate-x-1/2 z-30 bg-card border border-border rounded-b-lg px-3 py-1 shadow-sm hover:bg-accent/50 transition-colors items-center gap-1",
-          isCollapsed ? "translate-y-full" : "translate-y-[calc(100%-1px)]"
-        )}
-      >
-        <BarChart3 className="h-3 w-3 text-muted-foreground" />
-        <span className="text-[10px] text-muted-foreground">
-          {isCollapsed ? "Show" : "Hide"}
-        </span>
       </button>
 
       {/* Collapsible Panel Area */}
@@ -93,7 +79,7 @@ export function DataPanel() {
         {/* Resize Handle */}
         <div
           className={cn(
-            "absolute left-0 top-0 bottom-0 w-3 cursor-col-resize z-20 flex items-center justify-center group max-md:hidden",
+            "absolute left-0 top-0 bottom-0 w-3 cursor-col-resize z-20 flex items-center justify-center group",
             isResizing && "bg-primary/10"
           )}
           onMouseDown={handleMouseDown}
