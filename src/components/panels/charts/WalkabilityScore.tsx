@@ -1,4 +1,11 @@
 import { cn } from '@/lib/utils';
+import { Info } from 'lucide-react';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 interface WalkabilityScoreProps {
   score: number;
@@ -32,8 +39,27 @@ export function WalkabilityScore({ score }: WalkabilityScoreProps) {
 
   return (
     <div className="bg-background rounded-md p-3">
-      <div className="text-[9px] uppercase tracking-wide text-muted-foreground mb-1">
-        Walkability Score
+      <div className="flex items-center justify-between mb-1">
+        <span className="text-[9px] uppercase tracking-wide text-muted-foreground">
+          Walkability Score
+        </span>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button className="text-muted-foreground hover:text-foreground transition-colors">
+                <Info className="h-3 w-3" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="left" className="max-w-56 text-[10px]">
+              <p className="font-medium mb-1">How it's calculated</p>
+              <p className="text-muted-foreground leading-relaxed">
+                For each land use type, we measure the average distance from residential buildings.
+                The score reflects how close services are relative to their maximum walkable distance.
+                Final score is the average across all enabled land uses.
+              </p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
       </div>
       <div className="flex items-center gap-3">
         <div className={cn(
