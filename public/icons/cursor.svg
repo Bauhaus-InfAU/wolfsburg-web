@@ -1,14 +1,4 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg id="a" data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-  <defs>
-    <style>
-      .b {
-        fill: #fff;
-        stroke: #383838;
-        stroke-linecap: round;
-        stroke-linejoin: round;
-      }
-    </style>
-  </defs>
-  <polyline class="b" points="4 20 16.8 13.6 4 4 4 20"/>
+<svg id="c" data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+  <polyline points="4 20 16.8 13.6 4 4 4 20" style="fill: #fff; stroke: #383838; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.5px;"/>
 </svg>

@@ -97,7 +97,7 @@ export function PathPreview() {
     });
 
     // Create end marker (B)
-    const endEl = createMarkerElement('B', '#3288bd');
+    const endEl = createMarkerElement('B', '#f57f5b');
     const endMarker = new maplibregl.Marker({
       element: endEl,
       draggable: true,
