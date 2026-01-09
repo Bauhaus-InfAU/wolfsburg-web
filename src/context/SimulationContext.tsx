@@ -81,6 +81,7 @@ interface SimulationContextValue {
   getStreetUsage: () => SegmentUsage[];
   getStreetUsageMax: () => number;
   getAverageDistancesByLandUse: () => Map<LandUse, { avgDistance: number; count: number }>;
+  getLandUseAreas: () => Map<LandUse, number>;
 }
 
 const SimulationContext = createContext<SimulationContextValue | null>(null);
@@ -499,6 +500,19 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
     return engineRef.current?.getAverageDistancesByLandUse() || new Map();
   }, []);
 
+  const getLandUseAreas = useCallback((): Map<LandUse, number> => {
+    const buildingStore = buildingStoreRef.current;
+    if (!buildingStore) return new Map();
+
+    const totals = new Map<LandUse, number>();
+    for (const building of buildingStore.buildings.values()) {
+      for (const [landUse, area] of building.landUseAreas) {
+        totals.set(landUse, (totals.get(landUse) || 0) + area);
+      }
+    }
+    return totals;
+  }, []);
+
   const getResidentialCount = useCallback((): number => {
     return buildingStoreRef.current?.residential.length || 0;
   }, []);
@@ -569,6 +583,7 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
     getStreetUsage,
     getStreetUsageMax,
     getAverageDistancesByLandUse,
+    getLandUseAreas,
   };
 
   return (

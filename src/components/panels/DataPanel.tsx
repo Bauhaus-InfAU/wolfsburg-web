@@ -7,6 +7,7 @@ import { TopStreets } from './charts/TopStreets';
 import { WalkabilityScore } from './charts/WalkabilityScore';
 import { LowWalkability } from './charts/LowWalkability';
 import { DistanceDecay } from './charts/DistanceDecay';
+import { LandUseDonut } from './charts/LandUseDonut';
 
 const MIN_WIDTH = 240;
 const MAX_WIDTH = 420;
@@ -113,6 +114,9 @@ export function DataPanel() {
 
         {/* Scrollable Content */}
         <div className="flex-1 overflow-y-auto custom-scrollbar p-3 space-y-3">
+          {/* Land Use Distribution */}
+          <LandUseDonut />
+
           {/* Walkability Score - Main KPI */}
           <WalkabilityScore score={walkabilityScore} />
 
