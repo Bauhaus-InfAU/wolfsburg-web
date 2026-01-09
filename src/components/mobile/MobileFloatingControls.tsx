@@ -1,4 +1,3 @@
-import { Pause } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useSimulation } from '@/hooks/useSimulation';
 import type { MobilePanel } from '@/hooks/useMobileLayout';
@@ -39,9 +38,9 @@ export function MobileFloatingControls({ onOpenPanel }: MobileFloatingControlsPr
             onClick={isRunning ? pause : play}
           >
             {isRunning ? (
-              <Pause className="w-6 h-6" />
+              <img src="/weimar-web/icons/pause.svg" alt="Pause" className="w-6 h-6" />
             ) : (
-              <img src="/weimar-web/icons/main.svg" alt="Play" className="w-8 h-8" />
+              <img src="/weimar-web/icons/play.svg" alt="Play" className="w-6 h-6" />
             )}
           </Button>
         </div>
