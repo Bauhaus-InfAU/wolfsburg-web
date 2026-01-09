@@ -3,6 +3,7 @@ import { ControlPanel } from './panels/ControlPanel';
 import { DataPanel } from './panels/DataPanel';
 import { LoadingOverlay } from './LoadingOverlay';
 import { PathPreview } from './PathPreview';
+import { BuildingInfo } from './BuildingInfo';
 
 export function App() {
   return (
@@ -11,6 +12,7 @@ export function App() {
       <div className="flex-1 h-full relative">
         <MapCanvas />
         <PathPreview />
+        <BuildingInfo />
       </div>
       <DataPanel />
       <LoadingOverlay />

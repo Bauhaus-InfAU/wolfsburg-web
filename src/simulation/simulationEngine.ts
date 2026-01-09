@@ -35,6 +35,10 @@ export class SimulationEngine {
   private baselineWeight: number; // Sum of all destination land use weights
   private effectiveMaxAgents: number; // Scaled by enabled land uses
 
+  // Per-building trip tracking
+  private tripsGenerated: Map<string, number> = new Map();
+  private tripsAttracted: Map<string, number> = new Map();
+
   // Callbacks
   public onUpdate: ((agents: Agent[], stats: SimulationStats) => void) | null = null;
   public onStatsUpdate: ((stats: SimulationStats) => void) | null = null;
@@ -146,6 +150,10 @@ export class SimulationEngine {
     };
     this.totalDistanceSum = 0;
 
+    // Reset per-building trip tracking
+    this.tripsGenerated.clear();
+    this.tripsAttracted.clear();
+
     // Reset trip generator
     this.tripGenerator.reset();
 
@@ -216,6 +224,12 @@ export class SimulationEngine {
             const dy = lat2 - lat1;
             return sum + Math.sqrt(dx * dx + dy * dy) * 111000; // Rough conversion to meters
           }, 0);
+
+          // Track per-building trips
+          const originId = trip.origin.id;
+          const destId = trip.destination.id;
+          this.tripsGenerated.set(originId, (this.tripsGenerated.get(originId) || 0) + 1);
+          this.tripsAttracted.set(destId, (this.tripsAttracted.get(destId) || 0) + 1);
 
           // Record path usage for heatmap
           this.usageTracker.recordPath(trip.path);
@@ -299,5 +313,15 @@ export class SimulationEngine {
    */
   findPath(from: [number, number], to: [number, number]) {
     return this.pathfinder.findPath(from, to);
+  }
+
+  /**
+   * Get trip statistics for a specific building.
+   */
+  getBuildingTripStats(buildingId: string): { generated: number; attracted: number } {
+    return {
+      generated: this.tripsGenerated.get(buildingId) || 0,
+      attracted: this.tripsAttracted.get(buildingId) || 0,
+    };
   }
 }

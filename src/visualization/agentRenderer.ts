@@ -1,6 +1,6 @@
 import { LAND_USE_COLORS, SIMULATION_DEFAULTS } from '../config/constants';
 import { Agent } from '../agents/agent';
-import { MapLibreView } from './mapLibreView';
+import { MapLibreView } from './MapLibreView';
 
 export class AgentRenderer {
   private mapView: MapLibreView;

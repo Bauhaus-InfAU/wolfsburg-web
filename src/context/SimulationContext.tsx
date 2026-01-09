@@ -1,15 +1,22 @@
 import React, { createContext, useContext, useState, useRef, useCallback, useEffect } from 'react';
-import type { LandUse, SimulationStats, BuildingCollection, StreetCollection, Path } from '../config/types';
+import type { LandUse, SimulationStats, BuildingCollection, StreetCollection, Path, Building } from '../config/types';
 import { DESTINATION_LAND_USES } from '../config/constants';
-import { SimulationEngine } from '../simulation/simulationEngine';
+import { SimulationEngine } from '../simulation/SimulationEngine';
 import { BuildingStore } from '../data/buildingStore';
 import { StreetGraph } from '../data/streetGraph';
-import { MapLibreView } from '../visualization/mapLibreView';
+import { MapLibreView } from '../visualization/MapLibreView';
 import { AgentRenderer } from '../visualization/agentRenderer';
 import { loadBuildings, loadStreets } from '../data/dataLoader';
 import { createLegend } from '../visualization/buildingLayer';
 import type { SegmentUsage } from '../data/StreetUsageTracker';
 import { calculateBuildingWalkability, getWalkabilityBuildingsInRange, type BuildingWalkabilityScore } from '../data/buildingWalkability';
+
+export interface SelectedBuildingStats {
+  building: Building;
+  tripsGenerated: number;
+  tripsAttracted: number;
+  clickPosition: [number, number];
+}
 
 interface SimulationContextValue {
   // State
@@ -33,6 +40,9 @@ interface SimulationContextValue {
   pathPreviewEnd: [number, number] | null;
   pathPreviewPath: Path | null;
 
+  // Selected building state
+  selectedBuildingStats: SelectedBuildingStats | null;
+
   // Actions
   play: () => void;
   pause: () => void;
@@ -50,6 +60,9 @@ interface SimulationContextValue {
   // Building walkability data
   getResidentialCount: () => number;
   getLowWalkabilityCount: () => number;
+
+  // Selected building actions
+  clearSelectedBuilding: () => void;
 
   // Path preview actions
   setShowPathPreview: (show: boolean) => void;
@@ -96,6 +109,9 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
   const [pathPreviewStart, setPathPreviewStart] = useState<[number, number] | null>(null);
   const [pathPreviewEnd, setPathPreviewEnd] = useState<[number, number] | null>(null);
   const [pathPreviewPath, setPathPreviewPath] = useState<Path | null>(null);
+
+  // Selected building state
+  const [selectedBuildingStats, setSelectedBuildingStats] = useState<SelectedBuildingStats | null>(null);
 
   // Refs for imperative objects
   const engineRef = useRef<SimulationEngine | null>(null);
@@ -278,6 +294,21 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
 
       // Note: onViewChange callback is set up in the useEffect below
       // to ensure it has access to the current showAgents value
+
+      // Wire up building click callback
+      mapView.onBuildingClick = (buildingId, coordinates) => {
+        const building = buildingStore.getBuildingById(buildingId);
+        const tripStats = engine.getBuildingTripStats(buildingId);
+
+        if (building) {
+          setSelectedBuildingStats({
+            building,
+            tripsGenerated: tripStats.generated,
+            tripsAttracted: tripStats.attracted,
+            clickPosition: coordinates,
+          });
+        }
+      };
 
       setLoadingStatus('Ready!');
       setIsLoading(false);
@@ -480,6 +511,11 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
     return maxIndex - minIndex;
   }, [buildingWalkabilityScores, lowWalkabilityRange]);
 
+  // Selected building methods
+  const clearSelectedBuilding = useCallback(() => {
+    setSelectedBuildingStats(null);
+  }, []);
+
   // Path preview methods
   const findPath = useCallback((from: [number, number], to: [number, number]): Path | null => {
     return engineRef.current?.findPath(from, to) ?? null;
@@ -507,6 +543,7 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
     pathPreviewStart,
     pathPreviewEnd,
     pathPreviewPath,
+    selectedBuildingStats,
     play,
     pause,
     reset,
@@ -521,6 +558,7 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
     setLowWalkabilityRange,
     getResidentialCount,
     getLowWalkabilityCount,
+    clearSelectedBuilding,
     setShowPathPreview,
     setPathPreviewStart,
     setPathPreviewEnd,

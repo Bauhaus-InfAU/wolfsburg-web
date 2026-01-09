@@ -16,6 +16,7 @@ export class MapLibreView {
 
   // Callbacks
   public onViewChange: (() => void) | null = null;
+  public onBuildingClick: ((buildingId: string, coordinates: [number, number]) => void) | null = null;
 
   constructor(containerId: string) {
     this.container = document.getElementById(containerId)!;
@@ -77,6 +78,25 @@ export class MapLibreView {
     // Resize agent canvas when map resizes
     this.map.on('resize', () => {
       this.resizeAgentCanvas();
+    });
+
+    // Building click handler
+    this.map.on('click', 'buildings-fill', (e) => {
+      if (e.features && e.features.length > 0) {
+        const feature = e.features[0];
+        const buildingId = feature.properties?.['Building ID'];
+        if (buildingId && this.onBuildingClick) {
+          this.onBuildingClick(buildingId, [e.lngLat.lng, e.lngLat.lat]);
+        }
+      }
+    });
+
+    // Cursor feedback on building hover
+    this.map.on('mouseenter', 'buildings-fill', () => {
+      this.map.getCanvas().style.cursor = 'pointer';
+    });
+    this.map.on('mouseleave', 'buildings-fill', () => {
+      this.map.getCanvas().style.cursor = '';
     });
   }
 
