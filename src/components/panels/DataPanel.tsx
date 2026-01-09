@@ -53,20 +53,11 @@ export function DataPanel() {
   }
 
   return (
-    <div
-      className={cn(
-        "relative h-full p-3 max-md:p-2 max-md:w-full max-md:h-auto max-md:absolute max-md:z-20 transition-transform duration-300 ease-in-out",
-        isCollapsed && "translate-x-full max-md:translate-x-0 max-md:-translate-y-full"
-      )}
-      style={{ width: `${width}px` }}
-    >
-      {/* Toggle Button */}
+    <div className="relative h-full flex max-md:w-full max-md:h-auto max-md:absolute max-md:z-20">
+      {/* Toggle Button - outside collapsible area */}
       <button
         onClick={() => setIsCollapsed(!isCollapsed)}
-        className={cn(
-          "absolute top-1/2 -translate-y-1/2 z-30 bg-card border border-border rounded-l-lg p-1.5 shadow-sm hover:bg-accent/50 transition-colors max-md:hidden",
-          isCollapsed ? "left-0 -translate-x-full" : "left-0 -translate-x-[calc(100%-1px)]"
-        )}
+        className="absolute top-1/2 -translate-y-1/2 left-0 -translate-x-full z-30 bg-card border border-border rounded-l-lg p-1.5 shadow-sm hover:bg-accent/50 transition-colors max-md:hidden"
         title={isCollapsed ? "Show insights" : "Hide insights"}
       >
         <ChevronRight
@@ -91,8 +82,13 @@ export function DataPanel() {
         </span>
       </button>
 
-      {/* Panel Content */}
-      <div className="relative h-full bg-card rounded-xl border border-border shadow-sm overflow-hidden flex flex-col">
+      {/* Collapsible Panel Area */}
+      <div
+        className="h-full overflow-hidden transition-[width] duration-300 ease-in-out"
+        style={{ width: isCollapsed ? '0px' : `${width}px` }}
+      >
+        <div className="p-3 h-full" style={{ minWidth: `${width}px` }}>
+        <div className="relative h-full bg-card rounded-xl border border-border shadow-sm overflow-hidden flex flex-col">
         {/* Resize Handle */}
         <div
           className={cn(
@@ -143,6 +139,8 @@ export function DataPanel() {
             </div>
           </div>
         </div>
+        </div>
+      </div>
       </div>
     </div>
   );

@@ -7,7 +7,7 @@ import { BuildingInfo } from './BuildingInfo';
 
 export function App() {
   return (
-    <div className="flex h-screen w-screen max-md:flex-col">
+    <div className="flex h-screen w-screen max-md:flex-col overflow-hidden">
       <ControlPanel />
       <div className="flex-1 h-full relative">
         <MapCanvas />
