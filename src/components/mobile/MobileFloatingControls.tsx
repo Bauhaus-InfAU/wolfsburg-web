@@ -16,31 +16,39 @@ export function MobileFloatingControls({ onOpenPanel }: MobileFloatingControlsPr
           {/* Settings panel toggle */}
           <Button
             variant="ghost"
-            className="flex-1 h-12"
+            className="flex-1 h-12 flex-col gap-0.5 py-1"
             onClick={() => onOpenPanel('controls')}
           >
-            <img src="/weimar-web/icons/settings.svg" alt="Settings" className="w-6 h-6" />
+            <img src="/weimar-web/icons/settings.svg" alt="" className="w-5 h-5" />
+            <span className="text-[10px]">Settings</span>
           </Button>
 
           {/* Data panel toggle */}
           <Button
             variant="ghost"
-            className="flex-1 h-12"
+            className="flex-1 h-12 flex-col gap-0.5 py-1"
             onClick={() => onOpenPanel('data')}
           >
-            <img src="/weimar-web/icons/insights.svg" alt="Insights" className="w-6 h-6" />
+            <img src="/weimar-web/icons/insights.svg" alt="" className="w-5 h-5" />
+            <span className="text-[10px]">Insights</span>
           </Button>
 
           {/* Play/Pause - primary action */}
           <Button
-            variant={isRunning ? "outline" : "ghost"}
-            className="flex-1 h-12"
+            variant={isRunning ? "outline" : "default"}
+            className="flex-1 h-12 flex-col gap-0.5 py-1"
             onClick={isRunning ? pause : play}
           >
             {isRunning ? (
-              <img src="/weimar-web/icons/pause.svg" alt="Pause" className="w-6 h-6" />
+              <>
+                <img src="/weimar-web/icons/pause.svg" alt="" className="w-5 h-5" />
+                <span className="text-[10px]">Pause</span>
+              </>
             ) : (
-              <img src="/weimar-web/icons/play.svg" alt="Play" className="w-6 h-6" />
+              <>
+                <img src="/weimar-web/icons/play-white.svg" alt="" className="w-5 h-5" />
+                <span className="text-[10px]">Play</span>
+              </>
             )}
           </Button>
         </div>
