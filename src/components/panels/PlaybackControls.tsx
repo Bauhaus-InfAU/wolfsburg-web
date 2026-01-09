@@ -13,8 +13,8 @@ export function PlaybackControls() {
         disabled={isRunning}
         onClick={play}
       >
-        <img src="/weimar-web/icons/play.svg" alt="" className="w-4 h-4 mr-1.5" />
-        Play
+        <img src="/weimar-web/icons/play-white.svg" alt="" className="w-4 h-4 mr-1.5" />
+        Simulate
       </Button>
       <Button
         variant="outline"

@@ -16,41 +16,47 @@ export function MobileFloatingControls({ onOpenPanel }: MobileFloatingControlsPr
           {/* Settings panel toggle */}
           <Button
             variant="ghost"
-            className="flex-1 h-12 flex-col gap-0.5 py-1"
+            size="sm"
+            className="flex-1"
             onClick={() => onOpenPanel('controls')}
           >
-            <img src="/weimar-web/icons/settings.svg" alt="" className="w-5 h-5" />
-            <span className="text-[10px]">Settings</span>
+            <img src="/weimar-web/icons/settings.svg" alt="" className="w-4 h-4 mr-1.5" />
+            Settings
           </Button>
 
           {/* Data panel toggle */}
           <Button
             variant="ghost"
-            className="flex-1 h-12 flex-col gap-0.5 py-1"
+            size="sm"
+            className="flex-1"
             onClick={() => onOpenPanel('data')}
           >
-            <img src="/weimar-web/icons/insights.svg" alt="" className="w-5 h-5" />
-            <span className="text-[10px]">Insights</span>
+            <img src="/weimar-web/icons/insights.svg" alt="" className="w-4 h-4 mr-1.5" />
+            Insights
           </Button>
 
           {/* Play/Pause - primary action */}
-          <Button
-            variant={isRunning ? "outline" : "default"}
-            className="flex-1 h-12 flex-col gap-0.5 py-1"
-            onClick={isRunning ? pause : play}
-          >
-            {isRunning ? (
-              <>
-                <img src="/weimar-web/icons/pause.svg" alt="" className="w-5 h-5" />
-                <span className="text-[10px]">Pause</span>
-              </>
-            ) : (
-              <>
-                <img src="/weimar-web/icons/play-white.svg" alt="" className="w-5 h-5" />
-                <span className="text-[10px]">Play</span>
-              </>
-            )}
-          </Button>
+          {isRunning ? (
+            <Button
+              variant="outline"
+              size="sm"
+              className="flex-1"
+              onClick={pause}
+            >
+              <img src="/weimar-web/icons/pause.svg" alt="" className="w-4 h-4 mr-1.5" />
+              Pause
+            </Button>
+          ) : (
+            <Button
+              variant="default"
+              size="sm"
+              className="flex-1"
+              onClick={play}
+            >
+              <img src="/weimar-web/icons/play-white.svg" alt="" className="w-4 h-4 mr-1.5" />
+              Simulate
+            </Button>
+          )}
         </div>
       </div>
     </div>
