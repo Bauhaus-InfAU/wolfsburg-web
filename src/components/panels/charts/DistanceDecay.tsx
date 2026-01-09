@@ -1,8 +1,15 @@
-import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, Tooltip } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, Tooltip as RechartsTooltip } from 'recharts';
 import { MID_DECAY_BETA } from '@/data/midMobilityData';
 import { LAND_USE_COLORS, LAND_USE_DISPLAY_NAMES } from '@/config/constants';
 import type { LandUse } from '@/config/types';
 import type { ServiceDistance } from '@/hooks/useUrbanInsights';
+import { Info } from 'lucide-react';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 interface DistanceDecayProps {
   serviceDistances: ServiceDistance[];
@@ -53,9 +60,28 @@ export function DistanceDecay({ serviceDistances }: DistanceDecayProps) {
   return (
     <div className="bg-background rounded-md p-3">
       <div className="flex items-center justify-between mb-2">
-        <span className="text-[9px] uppercase tracking-wide text-muted-foreground">
-          Distance Decay
-        </span>
+        <div className="flex items-center gap-1.5">
+          <span className="text-[9px] uppercase tracking-wide text-muted-foreground">
+            Distance Decay
+          </span>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button className="text-muted-foreground hover:text-foreground transition-colors">
+                  <Info className="h-3 w-3" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="max-w-56 text-[10px]">
+                <p className="font-medium mb-1">What this shows</p>
+                <p className="text-muted-foreground leading-relaxed">
+                  Trip probability decreases with distance based on MiD 2023 survey data.
+                  Each land use has a different decay rate - retail trips are shorter while sports trips can be longer.
+                  Values in parentheses show current average distances.
+                </p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
         <span className="text-[10px] text-muted-foreground">
           trip probability
         </span>
@@ -82,7 +108,7 @@ export function DistanceDecay({ serviceDistances }: DistanceDecayProps) {
               domain={[0, 1]}
               ticks={[0, 0.25, 0.5, 0.75, 1]}
             />
-            <Tooltip
+            <RechartsTooltip
               content={({ active, payload, label }) => {
                 if (active && payload && payload.length > 0) {
                   return (

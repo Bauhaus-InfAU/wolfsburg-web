@@ -39,7 +39,7 @@ export function WalkabilityScore({ score }: WalkabilityScoreProps) {
 
   return (
     <div className="bg-background rounded-md p-3">
-      <div className="flex items-center justify-between mb-1">
+      <div className="flex items-center gap-1.5 mb-1">
         <span className="text-[9px] uppercase tracking-wide text-muted-foreground">
           Walkability Score
         </span>
@@ -50,7 +50,7 @@ export function WalkabilityScore({ score }: WalkabilityScoreProps) {
                 <Info className="h-3 w-3" />
               </button>
             </TooltipTrigger>
-            <TooltipContent side="left" className="max-w-56 text-[10px]">
+            <TooltipContent side="top" className="max-w-56 text-[10px]">
               <p className="font-medium mb-1">How it's calculated</p>
               <p className="text-muted-foreground leading-relaxed">
                 For each land use type, we measure the average distance from residential buildings.
