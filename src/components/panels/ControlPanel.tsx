@@ -116,26 +116,6 @@ export function ControlPanel() {
   );
 }
 
-function SectionGroup({
-  title,
-  children,
-}: {
-  title: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="mb-4">
-      <div className="px-2 py-2">
-        <h2 className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
-          {title}
-        </h2>
-      </div>
-      <div className="space-y-0.5">
-        {children}
-      </div>
-    </div>
-  );
-}
 
 function CollapsibleSection({
   title,
