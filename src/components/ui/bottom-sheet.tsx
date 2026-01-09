@@ -39,9 +39,9 @@ export function BottomSheet({
         </button>
       </div>
 
-      {/* Content - scrollable */}
+      {/* Content - scrollable, only render when open for proper chart dimensions */}
       <div className="flex-1 min-h-0 overflow-y-auto scrollbar-hidden pb-safe">
-        {children}
+        {isOpen && children}
       </div>
     </div>
   );
