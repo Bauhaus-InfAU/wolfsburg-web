@@ -1,4 +1,4 @@
-import { Play, Pause, RotateCcw } from 'lucide-react';
+import { Pause, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useSimulation } from '@/hooks/useSimulation';
 
@@ -14,7 +14,7 @@ export function PlaybackControls() {
         disabled={isRunning}
         onClick={play}
       >
-        <Play className="w-3.5 h-3.5 mr-1.5" />
+        <img src="/weimar-web/icons/main.svg" alt="" className="w-4 h-4 mr-1.5" />
         Play
       </Button>
       <Button

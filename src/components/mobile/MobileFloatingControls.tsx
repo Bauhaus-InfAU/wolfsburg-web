@@ -1,4 +1,4 @@
-import { Play, Pause, Settings, BarChart3 } from 'lucide-react';
+import { Pause } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useSimulation } from '@/hooks/useSimulation';
 import type { MobilePanel } from '@/hooks/useMobileLayout';
@@ -8,60 +8,42 @@ interface MobileFloatingControlsProps {
 }
 
 export function MobileFloatingControls({ onOpenPanel }: MobileFloatingControlsProps) {
-  const { isRunning, play, pause, stats } = useSimulation();
+  const { isRunning, play, pause } = useSimulation();
 
   return (
     <div className="fixed bottom-4 left-4 right-4 z-30">
-      <div className="bg-card/95 backdrop-blur-sm border border-border rounded-2xl shadow-lg p-3">
-        <div className="flex items-center justify-between gap-3">
-          {/* Stats - compact */}
-          <div className="flex gap-3 text-xs min-w-0 flex-shrink">
-            <div className="truncate">
-              <span className="text-muted-foreground">Agents </span>
-              <span className="font-medium tabular-nums">{stats.activeAgents}</span>
-            </div>
-            <div className="truncate">
-              <span className="text-muted-foreground">Trips </span>
-              <span className="font-medium tabular-nums">{stats.totalTrips.toLocaleString()}</span>
-            </div>
-          </div>
+      <div className="bg-card/95 backdrop-blur-sm border border-border rounded-2xl shadow-lg p-2">
+        <div className="flex items-center gap-2">
+          {/* Settings panel toggle */}
+          <Button
+            variant="ghost"
+            className="flex-1 h-12"
+            onClick={() => onOpenPanel('controls')}
+          >
+            <img src="/weimar-web/icons/settings.svg" alt="Settings" className="w-6 h-6" />
+          </Button>
 
-          {/* Action buttons */}
-          <div className="flex gap-2 flex-shrink-0">
-            {/* Settings panel toggle */}
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-10 w-10"
-              onClick={() => onOpenPanel('controls')}
-            >
-              <Settings className="w-5 h-5" />
-            </Button>
+          {/* Data panel toggle */}
+          <Button
+            variant="ghost"
+            className="flex-1 h-12"
+            onClick={() => onOpenPanel('data')}
+          >
+            <img src="/weimar-web/icons/insights.svg" alt="Insights" className="w-6 h-6" />
+          </Button>
 
-            {/* Data panel toggle */}
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-10 w-10"
-              onClick={() => onOpenPanel('data')}
-            >
-              <BarChart3 className="w-5 h-5" />
-            </Button>
-
-            {/* Play/Pause - primary action */}
-            <Button
-              variant="default"
-              size="icon"
-              className="h-10 w-10"
-              onClick={isRunning ? pause : play}
-            >
-              {isRunning ? (
-                <Pause className="w-5 h-5" />
-              ) : (
-                <Play className="w-5 h-5" />
-              )}
-            </Button>
-          </div>
+          {/* Play/Pause - primary action */}
+          <Button
+            variant={isRunning ? "outline" : "ghost"}
+            className="flex-1 h-12"
+            onClick={isRunning ? pause : play}
+          >
+            {isRunning ? (
+              <Pause className="w-6 h-6" />
+            ) : (
+              <img src="/weimar-web/icons/main.svg" alt="Play" className="w-8 h-8" />
+            )}
+          </Button>
         </div>
       </div>
     </div>
