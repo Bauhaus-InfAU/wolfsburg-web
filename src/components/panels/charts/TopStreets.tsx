@@ -5,12 +5,11 @@ import { Slider } from '@/components/ui/slider';
 
 interface TopStreetsProps {
   streets: TopStreet[];
-  maxCount: number;
   totalSegments: number;
 }
 
-export function TopStreets({ streets, maxCount, totalSegments }: TopStreetsProps) {
-  const { showTopStreets, setShowTopStreets, topStreetsPercent, setTopStreetsPercent } = useSimulation();
+export function TopStreets({ streets, totalSegments }: TopStreetsProps) {
+  const { showTopStreets, setShowTopStreets, topStreetsRange, setTopStreetsRange } = useSimulation();
 
   if (totalSegments === 0) {
     return (
@@ -43,48 +42,22 @@ export function TopStreets({ streets, maxCount, totalSegments }: TopStreetsProps
         </label>
       </div>
 
-      <div className="space-y-2 mb-3">
+      <div className="space-y-2">
         <div className="flex justify-between items-baseline">
-          <span className="text-[9px] text-muted-foreground">Coverage</span>
-          <span className="text-[10px] font-medium">{topStreetsPercent}%</span>
+          <span className="text-[9px] text-muted-foreground">Range</span>
+          <span className="text-[10px] font-medium">{topStreetsRange[0]}% – {topStreetsRange[1]}%</span>
         </div>
         <Slider
-          value={[topStreetsPercent]}
-          min={5}
-          max={50}
-          step={5}
-          onValueChange={([val]) => setTopStreetsPercent(val)}
+          value={topStreetsRange}
+          min={0}
+          max={100}
+          step={1}
+          onValueChange={(val) => setTopStreetsRange(val as [number, number])}
         />
         <div className="text-[9px] text-muted-foreground text-center">
-          {streets.length} of {totalSegments} segments
+          {streets.length} of {totalSegments} segments highlighted
         </div>
       </div>
-
-      {streets.length > 0 && (
-        <>
-          <div className="space-y-1.5">
-            {streets.slice(0, 5).map((street, index) => (
-              <div key={index} className="flex items-center gap-2">
-                <span className="text-[10px] font-medium text-muted-foreground w-4">
-                  {index + 1}.
-                </span>
-                <div className="flex-1 h-4 bg-accent/30 rounded overflow-hidden">
-                  <div
-                    className="h-full bg-primary/70 rounded transition-all duration-300"
-                    style={{ width: `${(street.count / maxCount) * 100}%` }}
-                  />
-                </div>
-                <span className="text-[10px] tabular-nums font-medium text-foreground w-12 text-right">
-                  {street.count.toLocaleString()}
-                </span>
-              </div>
-            ))}
-          </div>
-          <div className="text-[9px] text-muted-foreground mt-2 text-center">
-            Top 5 by pedestrian passes
-          </div>
-        </>
-      )}
     </div>
   );
 }

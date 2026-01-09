@@ -107,3 +107,26 @@ export function getLowestWalkabilityBuildings(
   const count = Math.max(1, Math.ceil(sorted.length * percent / 100));
   return sorted.slice(0, count).map(([id]) => id);
 }
+
+/**
+ * Get the building IDs within a walkability percentile range.
+ *
+ * @param scores - Map of building ID to walkability score
+ * @param range - [minPercent, maxPercent] percentile range (0-100)
+ * @returns Array of building IDs within the range, sorted by score (lowest first)
+ */
+export function getWalkabilityBuildingsInRange(
+  scores: Map<string, BuildingWalkabilityScore>,
+  range: [number, number]
+): string[] {
+  const [minPercent, maxPercent] = range;
+
+  // Sort by score ascending (lowest = worst walkability)
+  const sorted = [...scores.entries()]
+    .sort((a, b) => a[1].score - b[1].score);
+
+  const minIndex = Math.floor(sorted.length * minPercent / 100);
+  const maxIndex = Math.ceil(sorted.length * maxPercent / 100);
+
+  return sorted.slice(minIndex, maxIndex).map(([id]) => id);
+}

@@ -23,7 +23,6 @@ export function DataPanel() {
     topStreets,
     networkConcentration,
     totalSegments,
-    maxStreetCount,
     serviceDistances,
     walkabilityScore,
   } = useUrbanInsights();
@@ -135,7 +134,6 @@ export function DataPanel() {
               />
               <TopStreets
                 streets={topStreets}
-                maxCount={maxStreetCount}
                 totalSegments={totalSegments}
               />
             </div>

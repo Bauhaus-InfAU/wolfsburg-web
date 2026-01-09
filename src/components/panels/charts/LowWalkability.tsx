@@ -11,8 +11,8 @@ export function LowWalkability({ totalResidential, highlightedCount }: LowWalkab
   const {
     showLowWalkability,
     setShowLowWalkability,
-    lowWalkabilityPercent,
-    setLowWalkabilityPercent,
+    lowWalkabilityRange,
+    setLowWalkabilityRange,
   } = useSimulation();
 
   if (totalResidential === 0) {
@@ -48,18 +48,18 @@ export function LowWalkability({ totalResidential, highlightedCount }: LowWalkab
 
       <div className="space-y-2">
         <div className="flex justify-between items-baseline">
-          <span className="text-[9px] text-muted-foreground">Coverage</span>
-          <span className="text-[10px] font-medium">{lowWalkabilityPercent}%</span>
+          <span className="text-[9px] text-muted-foreground">Range</span>
+          <span className="text-[10px] font-medium">{lowWalkabilityRange[0]}% – {lowWalkabilityRange[1]}%</span>
         </div>
         <Slider
-          value={[lowWalkabilityPercent]}
-          min={5}
-          max={50}
-          step={5}
-          onValueChange={([val]) => setLowWalkabilityPercent(val)}
+          value={lowWalkabilityRange}
+          min={0}
+          max={100}
+          step={1}
+          onValueChange={(val) => setLowWalkabilityRange(val as [number, number])}
         />
         <div className="text-[9px] text-muted-foreground text-center">
-          {highlightedCount} of {totalResidential} buildings with poorest access
+          {highlightedCount} of {totalResidential} buildings by walkability score
         </div>
       </div>
     </div>
