@@ -37,6 +37,8 @@ This is a browser-based pedestrian flow simulation for the city of Weimar, built
 - `App` - Root component with flex layout
 - `MapCanvas` - Canvas container with ResizeObserver for responsive canvas sizing
 - `LoadingOverlay` - Full-screen loading spinner
+- `PathPreview` - Interactive path preview with draggable A/B markers
+- `BuildingInfo` - Floating popup showing building stats on click (land uses, trip counts, residents)
 
 **State Management** (`src/context/`)
 - `SimulationContext` - React context wrapping SimulationEngine, exposes state and actions to components
@@ -56,7 +58,7 @@ This is a browser-based pedestrian flow simulation for the city of Weimar, built
 - `midMobilityData` - MiD 2023 (Mobilität in Deutschland) calibration data for land use weights and distance decay.
 
 **Simulation Layer** (`src/simulation/`)
-- `SimulationEngine` - Main loop using `requestAnimationFrame`. Manages agent spawning, updates, and lifecycle.
+- `SimulationEngine` - Main loop using `requestAnimationFrame`. Manages agent spawning, updates, and lifecycle. Tracks per-building trip counts (generated/attracted).
 - `ODMatrix` - Computes origin-destination probabilities using gravity model: `D_i = W / e^(α × d)` where W is floor area and α is decay beta.
 - `Pathfinder` - A* algorithm over the street graph with LRU caching. Falls back to direct paths when graph unavailable.
 - `TripGenerator` - Probabilistically generates trips based on residential building floors and O-D matrix.
@@ -67,7 +69,7 @@ This is a browser-based pedestrian flow simulation for the city of Weimar, built
 - `AgentPool` - Object pool pattern to avoid allocation during simulation.
 
 **Visualization** (`src/visualization/`)
-- `MapLibreView` - WebGL-accelerated map using MapLibre GL JS. Renders 3D extruded buildings and streets via GPU. Canvas overlay for agents.
+- `MapLibreView` - WebGL-accelerated map using MapLibre GL JS. Renders 3D extruded buildings and streets via GPU. Canvas overlay for agents. Handles building click events via `onBuildingClick` callback.
 - `AgentRenderer` - Draws agents on Canvas overlay, uses `map.project()` for coordinate conversion.
 - `buildingLayer` - Provides `createLegend()` for land use color legend.
 - `streetUsageLayer` - Updates MapLibre heatmap layer data (blue→yellow→red gradient based on frequency).
