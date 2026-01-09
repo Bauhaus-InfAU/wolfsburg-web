@@ -128,9 +128,6 @@ export function DataPanel() {
 
           {/* Travel Behavior Section */}
           <div className="pt-2">
-            <div className="text-[9px] uppercase tracking-widest text-muted-foreground px-1 mb-2">
-              Travel Behavior
-            </div>
             <div className="space-y-2">
               <DistanceDecay serviceDistances={serviceDistances} />
             </div>
@@ -138,9 +135,6 @@ export function DataPanel() {
 
           {/* Busiest Streets Section */}
           <div className="pt-2">
-            <div className="text-[9px] uppercase tracking-widest text-muted-foreground px-1 mb-2">
-              Busiest Streets
-            </div>
             <div className="space-y-2">
               <TopStreets
                 streets={topStreets}
