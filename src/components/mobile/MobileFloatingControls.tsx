@@ -24,18 +24,7 @@ export function MobileFloatingControls({ onOpenPanel }: MobileFloatingControlsPr
             Settings
           </Button>
 
-          {/* Data panel toggle */}
-          <Button
-            variant="ghost"
-            size="sm"
-            className="flex-1"
-            onClick={() => onOpenPanel('data')}
-          >
-            <img src="/weimar-web/icons/insights.svg" alt="" className="w-4 h-4 mr-1.5" />
-            Insights
-          </Button>
-
-          {/* Play/Pause - primary action */}
+          {/* Play/Pause - primary action (center) */}
           {isRunning ? (
             <Button
               variant="outline"
@@ -57,6 +46,17 @@ export function MobileFloatingControls({ onOpenPanel }: MobileFloatingControlsPr
               Simulate
             </Button>
           )}
+
+          {/* Data panel toggle */}
+          <Button
+            variant="ghost"
+            size="sm"
+            className="flex-1"
+            onClick={() => onOpenPanel('data')}
+          >
+            <img src="/weimar-web/icons/insights.svg" alt="" className="w-4 h-4 mr-1.5" />
+            Insights
+          </Button>
         </div>
       </div>
     </div>
