@@ -59,17 +59,14 @@ export function ControlPanel() {
           )} />
         </div>
 
-        {/* Content - direction:rtl moves scrollbar to left */}
-        <div className="flex-1 overflow-y-auto custom-scrollbar" style={{ direction: 'rtl' }}>
-          <div style={{ direction: 'ltr' }}>
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto scrollbar-hidden">
+          <div>
           {/* Header */}
           <div className="sticky top-0 bg-card/95 backdrop-blur-sm z-10 px-5 py-4 border-b border-border">
-            <h1 className="text-sm font-semibold text-foreground">
-              Pedestrian Flow
+            <h1 className="text-sm font-semibold text-foreground text-center">
+              Weimar Pedestrian Flow
             </h1>
-            <p className="text-[11px] text-muted-foreground mt-0.5">
-              Weimar Urban Simulation
-            </p>
           </div>
 
           <div className="p-4 space-y-1">
@@ -95,13 +92,13 @@ export function ControlPanel() {
             <CollapsibleSection title="Land Use Types" defaultOpen>
               <LandUseToggles />
             </CollapsibleSection>
+          </div>
 
-            {/* About */}
-            <CollapsibleSection title="About" defaultOpen={false}>
-              <p className="text-[11px] text-muted-foreground leading-relaxed">
-                This simulation models pedestrian flows in Weimar using an origin-destination gravity model calibrated with MiD 2023 mobility data. Residents generate trips to nearby services based on distance decay functions, with agents following A* pathfinding through the street network.
-              </p>
-            </CollapsibleSection>
+          {/* About - always visible footer */}
+          <div className="px-5 py-4 border-t border-border mt-auto">
+            <p className="text-[10px] text-muted-foreground leading-relaxed">
+              This simulation models pedestrian flows in Weimar using an origin-destination gravity model calibrated with MiD 2023 mobility data. Residents generate trips to nearby services based on distance decay functions, with agents following A* pathfinding through the street network.
+            </p>
           </div>
           </div>
         </div>

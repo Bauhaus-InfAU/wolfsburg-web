@@ -106,14 +106,11 @@ export function DataPanel() {
 
         {/* Header */}
         <div className="px-4 py-3 border-b border-border bg-card/95 backdrop-blur-sm">
-          <div className="flex items-center gap-2">
-            <BarChart3 className="h-4 w-4 text-primary" />
-            <h2 className="text-sm font-semibold text-foreground">Urban Insights</h2>
-          </div>
+          <h2 className="text-sm font-semibold text-foreground text-center">Urban Insights</h2>
         </div>
 
         {/* Scrollable Content */}
-        <div className="flex-1 overflow-y-auto custom-scrollbar p-3 space-y-3">
+        <div className="flex-1 overflow-y-auto scrollbar-hidden p-3 space-y-3">
           {/* Land Use Distribution */}
           <LandUseDonut />
 

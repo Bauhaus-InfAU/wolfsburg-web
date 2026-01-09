@@ -115,6 +115,16 @@
   background: hsl(var(--muted-foreground));
 }
 
+/* Hidden scrollbar - still scrollable */
+.scrollbar-hidden {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hidden::-webkit-scrollbar {
+  display: none;
+}
+
 /* Loading spinner animation */
 @keyframes spin {
   to {
