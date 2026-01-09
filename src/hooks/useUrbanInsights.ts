@@ -24,7 +24,6 @@ export interface ServiceDistance {
 export interface UrbanInsights {
   // Infrastructure
   topStreets: TopStreet[];
-  networkConcentration: number; // % of traffic on top 20% of streets
   totalSegments: number;
   maxStreetCount: number;
 
@@ -75,15 +74,6 @@ export function useUrbanInsights(): UrbanInsights {
       normalized: s.normalized,
     }));
 
-    // Network concentration: what % of total traffic is on top 20% of streets
-    let networkConcentration = 0;
-    if (sortedSegments.length > 0) {
-      const totalTraffic = sortedSegments.reduce((sum, s) => sum + s.count, 0);
-      const top20Count = Math.max(1, Math.ceil(sortedSegments.length * 0.2));
-      const top20Traffic = sortedSegments.slice(0, top20Count).reduce((sum, s) => sum + s.count, 0);
-      networkConcentration = totalTraffic > 0 ? (top20Traffic / totalTraffic) * 100 : 0;
-    }
-
     // Get distance data by land use
     const distancesByLandUse = getAverageDistancesByLandUse();
 
@@ -119,7 +109,6 @@ export function useUrbanInsights(): UrbanInsights {
 
     return {
       topStreets,
-      networkConcentration: Math.round(networkConcentration),
       totalSegments: segments.length,
       maxStreetCount: maxCount,
       serviceDistances,

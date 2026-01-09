@@ -7,7 +7,6 @@ import { SimulationParams } from './SimulationParams';
 import { LandUseToggles } from './LandUseToggles';
 import { VisualizationToggles } from './VisualizationToggles';
 import { StatsDisplay } from './StatsDisplay';
-import { Legend } from './Legend';
 
 const MIN_WIDTH = 300;
 const MAX_WIDTH = 500;
@@ -95,11 +94,6 @@ export function ControlPanel() {
             {/* Filters */}
             <CollapsibleSection title="Land Use Types" defaultOpen>
               <LandUseToggles />
-            </CollapsibleSection>
-
-            {/* Legend */}
-            <CollapsibleSection title="Legend" defaultOpen={false}>
-              <Legend />
             </CollapsibleSection>
 
             {/* About */}

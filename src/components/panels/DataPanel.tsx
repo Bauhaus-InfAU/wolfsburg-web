@@ -4,10 +4,9 @@ import { ChevronRight, BarChart3 } from 'lucide-react';
 import { useSimulation } from '@/hooks/useSimulation';
 import { useUrbanInsights } from '@/hooks/useUrbanInsights';
 import { TopStreets } from './charts/TopStreets';
-import { NetworkConcentration } from './charts/NetworkConcentration';
-import { ServiceDistances } from './charts/ServiceDistances';
 import { WalkabilityScore } from './charts/WalkabilityScore';
 import { LowWalkability } from './charts/LowWalkability';
+import { DistanceDecay } from './charts/DistanceDecay';
 
 const MIN_WIDTH = 240;
 const MAX_WIDTH = 420;
@@ -21,7 +20,6 @@ export function DataPanel() {
   const { isLoading, getResidentialCount, getLowWalkabilityCount } = useSimulation();
   const {
     topStreets,
-    networkConcentration,
     totalSegments,
     serviceDistances,
     walkabilityScore,
@@ -122,33 +120,31 @@ export function DataPanel() {
           {/* Walkability Score - Main KPI */}
           <WalkabilityScore score={walkabilityScore} />
 
-          {/* Infrastructure Section */}
+          {/* Low Walkability Buildings */}
+          <LowWalkability
+            totalResidential={getResidentialCount()}
+            highlightedCount={getLowWalkabilityCount()}
+          />
+
+          {/* Travel Behavior Section */}
           <div className="pt-2">
             <div className="text-[9px] uppercase tracking-widest text-muted-foreground px-1 mb-2">
-              Infrastructure
+              Travel Behavior
             </div>
             <div className="space-y-2">
-              <NetworkConcentration
-                concentrationPercent={networkConcentration}
-                totalSegments={totalSegments}
-              />
-              <TopStreets
-                streets={topStreets}
-                totalSegments={totalSegments}
-              />
+              <DistanceDecay serviceDistances={serviceDistances} />
             </div>
           </div>
 
-          {/* Accessibility Section */}
+          {/* Busiest Streets Section */}
           <div className="pt-2">
             <div className="text-[9px] uppercase tracking-widest text-muted-foreground px-1 mb-2">
-              Accessibility
+              Busiest Streets
             </div>
             <div className="space-y-2">
-              <ServiceDistances distances={serviceDistances} />
-              <LowWalkability
-                totalResidential={getResidentialCount()}
-                highlightedCount={getLowWalkabilityCount()}
+              <TopStreets
+                streets={topStreets}
+                totalSegments={totalSegments}
               />
             </div>
           </div>
