@@ -10,17 +10,19 @@ export function PlaybackControls() {
         variant={isRunning ? "outline" : "default"}
         size="sm"
         className="flex-1"
-        disabled={isRunning}
         onClick={play}
       >
-        <img src="/weimar-web/icons/play-white.svg" alt="" className="w-4 h-4 mr-1.5" />
+        <img
+          src={isRunning ? "/weimar-web/icons/play.svg" : "/weimar-web/icons/play-white.svg"}
+          alt=""
+          className="w-4 h-4 mr-1.5"
+        />
         Simulate
       </Button>
       <Button
         variant="outline"
         size="sm"
         className="flex-1"
-        disabled={!isRunning}
         onClick={pause}
       >
         <img src="/weimar-web/icons/pause.svg" alt="" className="w-4 h-4 mr-1.5" />
