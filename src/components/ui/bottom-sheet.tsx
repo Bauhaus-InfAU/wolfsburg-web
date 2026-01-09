@@ -49,18 +49,19 @@ export function BottomSheet({
         className={cn(
           'fixed left-0 right-0 bottom-0 z-50 bg-card rounded-t-2xl border-t border-border shadow-lg',
           'transform transition-transform duration-300 ease-out',
+          'flex flex-col',
           heightClasses[height],
           isOpen ? 'translate-y-0' : 'translate-y-full'
         )}
       >
         {/* Drag Handle */}
-        <div className="flex justify-center pt-3 pb-2">
+        <div className="flex justify-center pt-3 pb-2 flex-shrink-0">
           <div className="w-10 h-1 bg-border rounded-full" />
         </div>
 
         {/* Header */}
         {title && (
-          <div className="px-4 pb-2 border-b border-border">
+          <div className="px-4 pb-2 border-b border-border flex-shrink-0">
             <h2 className="text-sm font-semibold text-foreground text-center">
               {title}
             </h2>
@@ -68,7 +69,7 @@ export function BottomSheet({
         )}
 
         {/* Content - scrollable */}
-        <div className="overflow-y-auto scrollbar-hidden h-full pb-safe">
+        <div className="flex-1 min-h-0 overflow-y-auto scrollbar-hidden pb-safe">
           {children}
         </div>
       </div>
