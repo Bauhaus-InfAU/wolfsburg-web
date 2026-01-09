@@ -37,7 +37,6 @@ export function App() {
           <BottomSheet
             isOpen={activePanel === 'controls'}
             onClose={closePanel}
-            height="half"
             title="Settings"
           >
             <MobileControlsContent />
@@ -46,8 +45,7 @@ export function App() {
           <BottomSheet
             isOpen={activePanel === 'data'}
             onClose={closePanel}
-            height="full"
-            title="Urban Insights"
+            title="Insights"
           >
             <MobileDataContent />
           </BottomSheet>

@@ -1,11 +1,11 @@
 import { cn } from '@/lib/utils';
-import { ReactNode, useEffect } from 'react';
+import { ReactNode } from 'react';
+import { X } from 'lucide-react';
 
 interface BottomSheetProps {
   isOpen: boolean;
   onClose: () => void;
   children: ReactNode;
-  height?: 'half' | 'full';
   title?: string;
 }
 
@@ -13,66 +13,36 @@ export function BottomSheet({
   isOpen,
   onClose,
   children,
-  height = 'half',
   title,
 }: BottomSheetProps) {
-  const heightClasses = {
-    half: 'max-h-[55vh]',
-    full: 'max-h-[85vh]',
-  };
-
-  // Prevent body scroll when sheet is open
-  useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = '';
-    }
-    return () => {
-      document.body.style.overflow = '';
-    };
-  }, [isOpen]);
-
   return (
-    <>
-      {/* Backdrop */}
-      <div
-        className={cn(
-          'fixed inset-0 bg-black/30 z-40 transition-opacity duration-300',
-          isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
-        )}
-        onClick={onClose}
-      />
-
-      {/* Sheet */}
-      <div
-        className={cn(
-          'fixed left-0 right-0 bottom-0 z-50 bg-card rounded-t-2xl border-t border-border shadow-lg',
-          'transform transition-transform duration-300 ease-out',
-          'flex flex-col',
-          heightClasses[height],
-          isOpen ? 'translate-y-0' : 'translate-y-full'
-        )}
-      >
-        {/* Drag Handle */}
-        <div className="flex justify-center pt-3 pb-2 flex-shrink-0">
-          <div className="w-10 h-1 bg-border rounded-full" />
-        </div>
-
-        {/* Header */}
+    <div
+      className={cn(
+        'fixed left-0 right-0 bottom-0 z-50 bg-card rounded-t-2xl border-t border-border shadow-lg',
+        'transform transition-transform duration-300 ease-out',
+        'flex flex-col',
+        'h-[40vh]',
+        isOpen ? 'translate-y-0' : 'translate-y-full'
+      )}
+    >
+      {/* Header with close button */}
+      <div className="flex items-center justify-between px-4 pt-3 pb-2 border-b border-border flex-shrink-0">
+        <div className="w-8" /> {/* Spacer for centering */}
         {title && (
-          <div className="px-4 pb-2 border-b border-border flex-shrink-0">
-            <h2 className="text-sm font-semibold text-foreground text-center">
-              {title}
-            </h2>
-          </div>
+          <h2 className="text-sm font-semibold text-foreground">{title}</h2>
         )}
-
-        {/* Content - scrollable */}
-        <div className="flex-1 min-h-0 overflow-y-auto scrollbar-hidden pb-safe">
-          {children}
-        </div>
+        <button
+          onClick={onClose}
+          className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-accent/50 transition-colors"
+        >
+          <X className="w-4 h-4 text-muted-foreground" />
+        </button>
       </div>
-    </>
+
+      {/* Content - scrollable */}
+      <div className="flex-1 min-h-0 overflow-y-auto scrollbar-hidden pb-safe">
+        {children}
+      </div>
+    </div>
   );
 }
