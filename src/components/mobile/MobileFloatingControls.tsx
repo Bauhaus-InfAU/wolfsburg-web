@@ -17,7 +17,7 @@ export function MobileFloatingControls({ onOpenPanel }: MobileFloatingControlsPr
           <Button
             variant="ghost"
             size="sm"
-            className="flex-1"
+            className="flex-1 rounded-full"
             onClick={() => onOpenPanel('controls')}
           >
             <img src="/weimar-web/icons/settings.svg" alt="" className="w-4 h-4 mr-1.5" />
@@ -28,7 +28,7 @@ export function MobileFloatingControls({ onOpenPanel }: MobileFloatingControlsPr
           <Button
             variant={isRunning ? "outline" : "default"}
             size="sm"
-            className="flex-1"
+            className="flex-1 rounded-full"
             onClick={isRunning ? pause : play}
           >
             <img
@@ -43,7 +43,7 @@ export function MobileFloatingControls({ onOpenPanel }: MobileFloatingControlsPr
           <Button
             variant="ghost"
             size="sm"
-            className="flex-1"
+            className="flex-1 rounded-full"
             onClick={() => onOpenPanel('data')}
           >
             <img src="/weimar-web/icons/insights.svg" alt="" className="w-4 h-4 mr-1.5" />
