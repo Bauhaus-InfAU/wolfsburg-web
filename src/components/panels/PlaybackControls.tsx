@@ -9,7 +9,7 @@ export function PlaybackControls() {
       <Button
         variant={isRunning ? "outline" : "default"}
         size="sm"
-        className="flex-1"
+        className="flex-1 rounded-full"
         onClick={isRunning ? pause : play}
       >
         <img
@@ -22,7 +22,7 @@ export function PlaybackControls() {
       <Button
         variant="outline"
         size="sm"
-        className="flex-1"
+        className="flex-1 rounded-full"
         onClick={reset}
       >
         <img src="/weimar-web/icons/reset.svg" alt="" className="w-4 h-4 mr-1.5" />
