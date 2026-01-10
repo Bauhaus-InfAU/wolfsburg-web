@@ -256,7 +256,10 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
       createLegend();
 
       // Set up engine callbacks
-      engine.onUpdate = (agents) => {
+      engine.onUpdate = (agents, newStats) => {
+        // Update stats live
+        setStats(newStats);
+
         if (showAgents && agentRendererRef.current) {
           agentRendererRef.current.render(agents);
         }
@@ -283,10 +286,6 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
             mapView.updateTopStreets(sorted.slice(minIndex, maxIndex));
           }
         }
-      };
-
-      engine.onStatsUpdate = (newStats) => {
-        setStats(newStats);
       };
 
       engine.onLandUseToggle = (newEnabledLandUses) => {
@@ -337,7 +336,10 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
     if (!engine || !agentRenderer || !mapView) return;
 
     // Update the onUpdate callback with current toggle states
-    engine.onUpdate = (agents) => {
+    engine.onUpdate = (agents, stats) => {
+      // Update stats live
+      setStats(stats);
+
       // Render agents if enabled
       if (showAgents) {
         agentRenderer.render(agents);
@@ -474,6 +476,13 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
   const reset = useCallback(() => {
     engineRef.current?.reset();
     setIsRunning(false);
+    // Update stats immediately after reset
+    setStats({ activeAgents: 0, totalTrips: 0, avgDistance: 0 });
+    // Clear heatmap
+    mapViewRef.current?.updateHeatmapData([]);
+    mapViewRef.current?.updateTopStreets([]);
+    // Clear agents from canvas
+    mapViewRef.current?.clearAgentCanvas();
   }, []);
 
   const setSpeed = useCallback((newSpeed: number) => {

@@ -123,6 +123,8 @@ export class SimulationEngine {
     if (this.isRunning) return;
     this.isRunning = true;
     this.lastTimestamp = performance.now();
+    // Update stats immediately so UI reflects current state
+    this.onStatsUpdate?.(this.stats);
     this.animationFrameId = requestAnimationFrame((t) => this.update(t));
   }
 
@@ -132,6 +134,8 @@ export class SimulationEngine {
       cancelAnimationFrame(this.animationFrameId);
       this.animationFrameId = null;
     }
+    // Update stats so UI reflects current state when paused
+    this.onStatsUpdate?.(this.stats);
   }
 
   reset(): void {
@@ -238,9 +242,12 @@ export class SimulationEngine {
           this.tripsGenerated.set(originId, (this.tripsGenerated.get(originId) || 0) + 1);
           this.tripsAttracted.set(destId, (this.tripsAttracted.get(destId) || 0) + 1);
 
-          // Record path usage for heatmap
-          this.usageTracker.recordPath(trip.path);
-          this.usageTracker.recordPath(trip.returnPath);
+          // Record path usage for heatmap (exclude connector segments: building ↔ street node)
+          // Only record street-to-street segments by skipping first and last points
+          if (trip.path.length > 2) {
+            this.usageTracker.recordPath(trip.path.slice(1, -1));
+            this.usageTracker.recordPath(trip.returnPath.slice(1, -1));
+          }
         }
       }
     }

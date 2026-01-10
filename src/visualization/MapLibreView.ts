@@ -439,12 +439,12 @@ export class MapLibreView {
   /**
    * Update the heatmap data with current street usage.
    */
-  updateHeatmapData(segments: SegmentUsage[], minThreshold: number = 0.01): void {
+  updateHeatmapData(segments: SegmentUsage[]): void {
     const source = this.map.getSource('street-usage') as maplibregl.GeoJSONSource;
     if (!source) return;
 
     const features = segments
-      .filter((s) => s.normalized >= minThreshold)
+      .filter((s) => s.count >= 1)
       .map((segment) => ({
         type: 'Feature' as const,
         properties: {

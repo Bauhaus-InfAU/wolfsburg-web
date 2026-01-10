@@ -24,28 +24,20 @@ export function MobileFloatingControls({ onOpenPanel }: MobileFloatingControlsPr
             Settings
           </Button>
 
-          {/* Play/Pause - primary action (center) */}
-          {isRunning ? (
-            <Button
-              variant="outline"
-              size="sm"
-              className="flex-1"
-              onClick={pause}
-            >
-              <img src="/weimar-web/icons/pause.svg" alt="" className="w-4 h-4 mr-1.5" />
-              Pause
-            </Button>
-          ) : (
-            <Button
-              variant="default"
-              size="sm"
-              className="flex-1"
-              onClick={play}
-            >
-              <img src="/weimar-web/icons/play-white.svg" alt="" className="w-4 h-4 mr-1.5" />
-              Simulate
-            </Button>
-          )}
+          {/* Play/Pause toggle - primary action (center) */}
+          <Button
+            variant={isRunning ? "outline" : "default"}
+            size="sm"
+            className="flex-1"
+            onClick={isRunning ? pause : play}
+          >
+            <img
+              src={isRunning ? "/weimar-web/icons/pause.svg" : "/weimar-web/icons/play-white.svg"}
+              alt=""
+              className="w-4 h-4 mr-1.5"
+            />
+            {isRunning ? "Pause" : "Simulate"}
+          </Button>
 
           {/* Data panel toggle */}
           <Button
