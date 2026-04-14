@@ -1,5 +1,7 @@
 import React, { createContext, useContext, useState, useRef, useCallback, useEffect } from 'react';
 import type { LandUse, BuildingCollection, StreetCollection, Path, Building, TransportMode } from '../config/types';
+import type { Landmark } from '../config/landmarks';
+import { WOLFSBURG_LANDMARKS } from '../config/landmarks';
 import { DESTINATION_LAND_USES } from '../config/constants';
 import { FlowCalculator, type FlowResult } from '../simulation/FlowCalculator';
 import { FlowCalculatorParallel } from '../simulation/FlowCalculatorParallel';
@@ -61,6 +63,9 @@ interface FlowContextValue {
   // Selected building state
   selectedBuildingStats: SelectedBuildingStats | null;
 
+  // Selected landmark state
+  selectedLandmark: Landmark | null;
+
   // Actions
   toggleLandUse: (landUse: LandUse, enabled: boolean) => void;
   setEnabledLandUses: (landUses: Set<LandUse>) => void;
@@ -83,6 +88,9 @@ interface FlowContextValue {
 
   // Selected building actions
   clearSelectedBuilding: () => void;
+
+  // Landmark actions
+  clearSelectedLandmark: () => void;
 
   // Path preview actions
   setShowPathPreview: (show: boolean) => void;
@@ -164,6 +172,9 @@ export function FlowProvider({ children }: { children: React.ReactNode }) {
 
   // Selected building state
   const [selectedBuildingStats, setSelectedBuildingStats] = useState<SelectedBuildingStats | null>(null);
+
+  // Selected landmark state
+  const [selectedLandmark, setSelectedLandmark] = useState<Landmark | null>(null);
 
   // Flow result
   const [flowResult, setFlowResult] = useState<FlowResult | null>(null);
@@ -470,6 +481,14 @@ export function FlowProvider({ children }: { children: React.ReactNode }) {
         }
       };
 
+      // Wire up landmark click callback and add markers
+      mapView.onLandmarkClick = (landmarkId) => {
+        const landmark = WOLFSBURG_LANDMARKS.find(l => l.id === landmarkId) ?? null;
+        setSelectedLandmark(landmark);
+        setSelectedBuildingStats(null); // close building popup if open
+      };
+      mapView.addLandmarksLayer(WOLFSBURG_LANDMARKS);
+
       // Skip auto-calculation - user will click "Calculate" button
       // Show heatmap layer (empty until calculation)
       mapView.setLayerVisibility('street-usage-heatmap', true);
@@ -674,6 +693,10 @@ export function FlowProvider({ children }: { children: React.ReactNode }) {
     setSelectedBuildingStats(null);
   }, []);
 
+  const clearSelectedLandmark = useCallback(() => {
+    setSelectedLandmark(null);
+  }, []);
+
   const findPath = useCallback((from: [number, number], to: [number, number]): Path | null => {
     return flowCalculatorRef.current?.findPath(from, to) ?? null;
   }, []);
@@ -759,6 +782,7 @@ export function FlowProvider({ children }: { children: React.ReactNode }) {
     pathPreviewPath,
     monochromeBuildings,
     selectedBuildingStats,
+    selectedLandmark,
     toggleLandUse,
     setEnabledLandUses,
     setTransportMode,
@@ -774,6 +798,7 @@ export function FlowProvider({ children }: { children: React.ReactNode }) {
     getResidentialCount,
     getLowWalkabilityCount,
     clearSelectedBuilding,
+    clearSelectedLandmark,
     setShowPathPreview,
     setPathPreviewStart,
     setPathPreviewEnd,
