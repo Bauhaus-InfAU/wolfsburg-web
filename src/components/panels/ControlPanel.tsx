@@ -8,6 +8,7 @@ import { StatsDisplay } from './StatsDisplay';
 import { CalculateButton } from './CalculateButton';
 import { TransportModeSelector } from './TransportModeSelector';
 import { SegmentEditor } from './SegmentEditor';
+import { ThemeToggle } from '@/components/ThemeToggle';
 
 const MIN_WIDTH = 300;
 const MAX_WIDTH = 500;

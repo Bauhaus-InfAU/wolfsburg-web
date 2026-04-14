@@ -5,6 +5,8 @@ import type { BlockCollection } from '../data/dataLoader';
 import { LAND_USE_COLORS } from '../config/constants';
 import { getCityConfig } from '../config/cityConfig';
 import type { HeatmapGradient } from '../config/gradientPresets';
+import type { Landmark } from '../config/landmarks';
+import { LANDMARK_CATEGORY_COLORS } from '../config/landmarks';
 
 // Natural element categories from blocks tn__bez field
 const WATER_TYPES = [
@@ -26,6 +28,27 @@ const GREEN_SPACE_TYPES = [
   'Sport-, Freizeit- und Erholungsfläche, Park',                // Park
   'Sport-, Freizeit- und Erholungsfläche, Kleingarten',         // Allotment garden
   'Landwirtschaft, Grünland',                                    // Grassland
+];
+
+// All publicly accessible open space types from Wolfsburg blocks data
+const OPEN_SPACE_TYPES = [
+  // Public squares and plazas
+  'Platz',
+  'Platz, Festplatz',
+  'Platz, Marktplatz',
+  // Parks, recreation and leisure (all Sport-/Freizeit- subtypes except buildings)
+  'Sport-, Freizeit- und Erholungsfläche, Park',
+  'Sport-, Freizeit- und Erholungsfläche, Erholungsfläche',
+  'Sport-, Freizeit- und Erholungsfläche, Siedlungsgrünfläche',
+  'Sport-, Freizeit- und Erholungsfläche, Kleingarten',
+  'Sport-, Freizeit- und Erholungsfläche, Spielplatz, Bolzplatz',
+  'Sport-, Freizeit- und Erholungsfläche, Sportanlage',
+  'Sport-, Freizeit- und Erholungsfläche, Campingplatz',
+  'Sport-, Freizeit- und Erholungsfläche, Schwimmen',
+  // Pedestrian zones
+  'Strassenverkehr, Fußgängerzone',
+  // Cemeteries (public open space)
+  'Friedhof',
 ];
 
 /**
@@ -78,12 +101,14 @@ export class MapLibreView {
   // Callbacks
   public onViewChange: (() => void) | null = null;
   public onBuildingClick: ((buildingId: string, coordinates: [number, number]) => void) | null = null;
+  public onLandmarkClick: ((landmarkId: string, coordinates: [number, number]) => void) | null = null;
   public onSegmentClick: ((fid: string, name?: string) => void) | null = null;
   public onAddSegment: ((from: [number, number], to: [number, number]) => void) | null = null;
 
   // Edit mode: 'none' | 'remove' | 'add'
   public editMode: 'none' | 'remove' | 'add' = 'none';
   private pendingAddPoint: [number, number] | null = null;
+  private landmarkMarkers: maplibregl.Marker[] = [];
 
   constructor(containerId: string) {
     this.container = document.getElementById(containerId)!;
@@ -568,6 +593,62 @@ export class MapLibreView {
   }
 
   /**
+   * Add a dedicated open spaces layer covering all publicly accessible open areas:
+   * plazas, squares, parks, recreation, sports, playgrounds, pedestrian zones, cemeteries.
+   * Hidden by default; toggled via setOpenSpacesVisibility().
+   */
+  addOpenSpacesLayer(blockData: BlockCollection): void {
+    const openSpaceFeatures = blockData.features.filter(
+      f => f.properties.tn__bez && OPEN_SPACE_TYPES.includes(f.properties.tn__bez)
+    );
+
+    console.log(`Open spaces: ${openSpaceFeatures.length} features`);
+
+    if (openSpaceFeatures.length === 0) return;
+
+    this.map.addSource('open-spaces', {
+      type: 'geojson',
+      data: {
+        type: 'FeatureCollection',
+        features: openSpaceFeatures,
+      },
+    });
+
+    // Filled area
+    this.map.addLayer({
+      id: 'open-spaces-fill',
+      type: 'fill',
+      source: 'open-spaces',
+      layout: { 'visibility': 'none' },
+      paint: {
+        'fill-color': '#f57f5b',  // App accent coral
+        'fill-opacity': 0.18,
+      },
+    });
+
+    // Thick outline — rendered on top of streets and buildings
+    this.map.addLayer({
+      id: 'open-spaces-outline',
+      type: 'line',
+      source: 'open-spaces',
+      layout: { 'visibility': 'none' },
+      paint: {
+        'line-color': '#f57f5b',  // App accent coral
+        'line-width': 2.5,
+        'line-opacity': 1,
+      },
+    });
+  }
+
+  /**
+   * Show or hide the open spaces layer.
+   */
+  setOpenSpacesVisibility(visible: boolean): void {
+    this.setLayerVisibility('open-spaces-fill', visible);
+    this.setLayerVisibility('open-spaces-outline', visible);
+  }
+
+  /**
    * Add heatmap source and layer (starts empty, updated dynamically).
    */
   addHeatmapLayer(): void {
@@ -966,6 +1047,76 @@ export class MapLibreView {
       type: 'FeatureCollection',
       features,
     });
+  }
+
+  /**
+   * Add HTML landmark markers with name labels.
+   * Each marker fires onLandmarkClick when clicked.
+   */
+  addLandmarksLayer(landmarks: Landmark[]): void {
+    for (const landmark of landmarks) {
+      const color = LANDMARK_CATEGORY_COLORS[landmark.category] ?? '#f57f5b';
+
+      // Build the HTML element for the marker
+      const el = document.createElement('div');
+      el.style.cssText = 'cursor:pointer;display:flex;flex-direction:column;align-items:center;pointer-events:auto;';
+
+      // Pin dot
+      const dot = document.createElement('div');
+      dot.style.cssText = [
+        `width:12px;height:12px`,
+        `background:${color}`,
+        `border:2px solid #ffffff`,
+        `border-radius:50%`,
+        `box-shadow:0 1px 4px rgba(0,0,0,0.35)`,
+        `flex-shrink:0`,
+        `transition:transform 0.15s`,
+      ].join(';');
+
+      // Name label
+      const label = document.createElement('div');
+      label.textContent = landmark.shortName;
+      label.style.cssText = [
+        `font-family:'Roboto Mono',monospace`,
+        `font-size:9px`,
+        `font-weight:500`,
+        `color:#1a1a1a`,
+        `background:rgba(255,255,255,0.88)`,
+        `padding:1px 5px`,
+        `border-radius:3px`,
+        `margin-top:3px`,
+        `white-space:nowrap`,
+        `box-shadow:0 1px 3px rgba(0,0,0,0.2)`,
+        `backdrop-filter:blur(2px)`,
+        `border:1px solid rgba(0,0,0,0.08)`,
+        `pointer-events:none`,
+      ].join(';');
+
+      el.appendChild(dot);
+      el.appendChild(label);
+
+      // Hover effect
+      el.addEventListener('mouseenter', () => {
+        dot.style.transform = 'scale(1.3)';
+        label.style.background = 'rgba(255,255,255,0.98)';
+      });
+      el.addEventListener('mouseleave', () => {
+        dot.style.transform = 'scale(1)';
+        label.style.background = 'rgba(255,255,255,0.88)';
+      });
+
+      // Click
+      el.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.onLandmarkClick?.(landmark.id, landmark.coordinates);
+      });
+
+      const marker = new maplibregl.Marker({ element: el, anchor: 'bottom' })
+        .setLngLat(landmark.coordinates)
+        .addTo(this.map);
+
+      this.landmarkMarkers.push(marker);
+    }
   }
 
   /**

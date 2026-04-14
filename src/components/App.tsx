@@ -4,6 +4,7 @@ import { DataPanel } from './panels/DataPanel';
 import { LoadingOverlay } from './LoadingOverlay';
 import { PathPreview } from './PathPreview';
 import { BuildingInfo } from './BuildingInfo';
+import { LandmarkInfo } from './LandmarkInfo';
 import { BottomSheet } from './ui/bottom-sheet';
 import { MobileFloatingControls } from './mobile/MobileFloatingControls';
 import { MobileControlsContent } from './mobile/MobileControlsContent';
@@ -24,6 +25,7 @@ export function App() {
         <MapCanvas />
         <PathPreview />
         <BuildingInfo />
+        <LandmarkInfo />
 
         {/* Mobile: Floating controls overlay */}
         {isMobile && <MobileFloatingControls onOpenPanel={openPanel} />}

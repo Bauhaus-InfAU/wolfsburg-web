@@ -7,9 +7,11 @@ export function VisualizationToggles() {
     showUsageHeatmap,
     showPathPreview,
     monochromeBuildings,
+    showOpenSpaces,
     setShowUsageHeatmap,
     setShowPathPreview,
     setMonochromeBuildings,
+    setShowOpenSpaces,
   } = useSimulation();
 
   return (
@@ -38,6 +40,16 @@ export function VisualizationToggles() {
           className="h-7 flex-1 text-[11px] rounded-full"
         >
           A-B Path
+        </Button>
+      </div>
+      <div className="flex gap-1.5">
+        <Button
+          variant={showOpenSpaces ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => setShowOpenSpaces(!showOpenSpaces)}
+          className="h-7 flex-1 text-[11px] rounded-full"
+        >
+          Open Spaces
         </Button>
       </div>
       {showUsageHeatmap && <GradientEditor />}
