@@ -1,0 +1,142 @@
+@import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;500;600&display=swap');
+@import 'maplibre-gl/dist/maplibre-gl.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 97%;
+    --foreground: 0 0% 15%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 15%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 15%;
+
+    --primary: 14 89% 66%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 0 0% 93%;
+    --secondary-foreground: 0 0% 31%;
+
+    --muted: 0 0% 93%;
+    --muted-foreground: 0 0% 50%;
+
+    --accent: 0 0% 91%;
+    --accent-foreground: 0 0% 15%;
+
+    --destructive: 60 2% 10%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 0 0% 84%;
+    --input: 0 0% 71%;
+    --ring: 14 89% 66%;
+
+    --sidebar: 0 0% 100%;
+    --sidebar-foreground: 60 2% 28%;
+    --sidebar-primary: 14 89% 66%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 0 0% 93%;
+    --sidebar-accent-foreground: 0 0% 20%;
+    --sidebar-border: 0 0% 92%;
+
+    --radius: 0.725rem;
+  }
+
+  .dark {
+    --background: 60 4% 17%;
+    --foreground: 50 10% 88%;
+
+    --card: 60 4% 17%;
+    --card-foreground: 0 0% 100%;
+
+    --popover: 60 3% 22%;
+    --popover-foreground: 0 0% 100%;
+
+    --primary: 14 62% 72%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 0 0% 100%;
+    --secondary-foreground: 60 3% 22%;
+
+    --muted: 60 5% 12%;
+    --muted-foreground: 50 11% 83%;
+
+    --accent: 50 17% 11%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 70% 73%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 60 6% 28%;
+    --input: 60 5% 37%;
+    --ring: 14 62% 72%;
+
+    --sidebar: 30 4% 14%;
+    --sidebar-foreground: 50 10% 88%;
+    --sidebar-primary: 0 0% 20%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 60 2% 10%;
+    --sidebar-accent-foreground: 50 10% 88%;
+    --sidebar-border: 0 0% 92%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: 'Roboto Mono', ui-monospace, monospace;
+    font-size: 13px;
+    letter-spacing: 0em;
+  }
+}
+
+/* Custom scrollbar for control panel */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: hsl(var(--border));
+  border-radius: 3px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground));
+}
+
+/* Hidden scrollbar - still scrollable */
+.scrollbar-hidden {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hidden::-webkit-scrollbar {
+  display: none;
+}
+
+/* Loading spinner animation */
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin-slow {
+  animation: spin 0.8s linear infinite;
+}
+
+/* Safe area padding for mobile devices (iPhone notch, home indicator) */
+.pb-safe {
+  padding-bottom: max(1rem, env(safe-area-inset-bottom));
+}
