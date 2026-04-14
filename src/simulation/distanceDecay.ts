@@ -1,5 +1,5 @@
-import type { LandUse } from '../config/types';
-import { MID_DECAY_BETA, MID_MAX_DISTANCE } from '../data/midMobilityData';
+import type { LandUse, TransportMode } from '../config/types';
+import { MODE_DECAY_BETA, MODE_MAX_DISTANCE, MID_DECAY_BETA, MID_MAX_DISTANCE } from '../data/midMobilityData';
 
 export type DistanceDecayFn = (distance: number) => number;
 
@@ -55,15 +55,16 @@ export function createGaussianDecay(sigma: number, maxDistance: number): Distanc
 }
 
 /**
- * Creates a land-use-specific exponential decay function.
+ * Creates a land-use-specific exponential decay function for a given transport mode.
  * Uses MiD 2023 calibrated parameters for beta and max distance.
  *
  * @param landUse - The destination land use type
- * @returns Distance decay function calibrated for that land use
+ * @param mode - The transport mode (default: pedestrian)
+ * @returns Distance decay function calibrated for that land use and mode
  */
-export function createLandUseDecay(landUse: LandUse): DistanceDecayFn {
-  const beta = MID_DECAY_BETA[landUse];
-  const maxDist = MID_MAX_DISTANCE[landUse];
+export function createLandUseDecay(landUse: LandUse, mode: TransportMode = 'pedestrian'): DistanceDecayFn {
+  const beta = MODE_DECAY_BETA[mode][landUse];
+  const maxDist = MODE_MAX_DISTANCE[mode][landUse];
   return (distance: number): number => {
     if (distance > maxDist || distance < 0) return 0;
     return Math.exp(-beta * distance);
@@ -73,6 +74,7 @@ export function createLandUseDecay(landUse: LandUse): DistanceDecayFn {
 /**
  * Get the decay beta for a specific land use.
  * Useful for UI display or debugging.
+ * @deprecated Use getDecayBeta from midMobilityData.ts instead
  */
 export function getDecayBeta(landUse: LandUse): number {
   return MID_DECAY_BETA[landUse];
@@ -81,6 +83,7 @@ export function getDecayBeta(landUse: LandUse): number {
 /**
  * Get the max distance for a specific land use.
  * Useful for UI display or debugging.
+ * @deprecated Use getMaxDistance from midMobilityData.ts instead
  */
 export function getMaxDistance(landUse: LandUse): number {
   return MID_MAX_DISTANCE[landUse];

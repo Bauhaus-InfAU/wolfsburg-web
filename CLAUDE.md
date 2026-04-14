@@ -14,7 +14,9 @@ No test framework is configured.
 
 ## Architecture
 
-This is a browser-based pedestrian flow simulation for the city of Weimar, built with React, TypeScript, and Vite. The UI uses shadcn/ui components with Tailwind CSS. The simulation models trips from residential buildings to various destination types using an origin-destination matrix with distance decay.
+This is a browser-based pedestrian flow visualization tool for the city of Weimar, built with React, TypeScript, and Vite. The UI uses shadcn/ui components with Tailwind CSS. The tool models trip distribution from residential buildings to various destination types using an origin-destination matrix with distance decay.
+
+**Note:** This is a **static flow model**, not an agent-based simulation. Instead of animating individual agents, it calculates expected trip flows upfront and displays them as a heatmap. This provides instant feedback when land use filters change and uses significantly less memory (~50-100 MB vs ~1.5 GB for agent simulation).
 
 ### UI Layer (`src/components/`)
 
@@ -23,19 +25,17 @@ This is a browser-based pedestrian flow simulation for the city of Weimar, built
 - `BottomSheet` - Mobile-only slide-up panel (40vh height) with close button
 
 **Panel Components** (`src/components/panels/`) - Desktop only
-- `ControlPanel` - Resizable sidebar (280-480px) wrapped in a card with collapsible sections organized into groups:
-  - **Controls**: Playback, Parameters
-  - **Filters**: Land Use Types, Display Options
-  - **Information**: Statistics, Legend
-- `PlaybackControls` - Play/Pause/Reset buttons
-- `SimulationParams` - Speed and spawn rate sliders
+- `ControlPanel` - Resizable sidebar (300-500px) wrapped in a card with collapsible sections:
+  - **Flow Statistics**: Total trips and average distance
+  - **Display Options**: Heatmap and A-B path toggles
+  - **Land Use Types**: Checkboxes to filter destination types
 - `LandUseToggles` - Checkboxes to filter destination types
-- `VisualizationToggles` - Show/hide agents and street usage heatmap
-- `StatsDisplay` - Active agents and total trips counters
+- `VisualizationToggles` - Show/hide flow heatmap and path preview
+- `StatsDisplay` - Total trips and average distance counters
 - `Legend` - Color-coded land use legend (collapsed by default)
 
 **Mobile Components** (`src/components/mobile/`)
-- `MobileFloatingControls` - Bottom floating bar with Settings, Simulate, and Insights buttons
+- `MobileFloatingControls` - Bottom floating bar with Settings and Insights buttons
 - `MobileControlsContent` - Settings panel content for bottom sheet (reuses panel components)
 - `MobileDataContent` - Insights panel content for bottom sheet (reuses chart components)
 
@@ -47,14 +47,14 @@ This is a browser-based pedestrian flow simulation for the city of Weimar, built
 - `BuildingInfo` - Floating popup showing building stats on click (land uses, trip counts, residents)
 
 **State Management** (`src/context/`)
-- `SimulationContext` - React context wrapping SimulationEngine, exposes state and actions to components
-- `useSimulation` hook - Access simulation state and controls from any component
+- `FlowContext` - React context wrapping FlowCalculator, exposes state and actions to components
+- `useSimulation` / `useFlow` hooks - Access flow state and controls from any component
 
 **Hooks** (`src/hooks/`)
 - `useMobileLayout` - Detects mobile viewport (<768px) and manages bottom sheet panel state
+- `useUrbanInsights` - Computes derived analytics from flow data
 
 **Custom Icons** (`public/icons/`)
-- `play.svg`, `play-white.svg`, `pause.svg`, `reset.svg` - Playback controls
 - `settings.svg` - Settings panel icon
 - `insights.svg` - Data/Insights panel icon
 - `main.svg` - App logo (coral crosshair)
@@ -71,47 +71,43 @@ This is a browser-based pedestrian flow simulation for the city of Weimar, built
 **Data Layer** (`src/data/`)
 - `BuildingStore` - Loads and indexes building GeoJSON, categorizes by land use. Uses RBush for spatial queries.
 - `StreetGraph` - Builds a graph from street GeoJSON for pathfinding. Nodes are coordinate-keyed, edges are bidirectional.
+- `StreetUsageTracker` - Accumulates flow counts for each street segment.
 - `midMobilityData` - MiD 2023 (Mobilität in Deutschland) calibration data for land use weights and distance decay.
 
-**Simulation Layer** (`src/simulation/`)
-- `SimulationEngine` - Main loop using `requestAnimationFrame`. Manages agent spawning, updates, and lifecycle. Tracks per-building trip counts (generated/attracted).
+**Flow Calculation** (`src/simulation/`)
+- `FlowCalculator` - Computes expected trip distribution and assigns flows to street segments. Recalculates instantly when land uses change.
 - `ODMatrix` - Computes origin-destination probabilities using gravity model: `D_i = W / e^(α × d)` where W is floor area and α is decay beta.
 - `Pathfinder` - A* algorithm over the street graph with LRU caching. Falls back to direct paths when graph unavailable.
-- `TripGenerator` - Probabilistically generates trips based on residential building floors and O-D matrix.
-- `StreetUsageTracker` - Tracks how often each street segment is used by agents for heatmap visualization.
-
-**Agent System** (`src/agents/`)
-- `Agent` - State machine: `toDestination` → `atDestination` → `returning` → `completed`. Interpolates position along path waypoints.
-- `AgentPool` - Object pool pattern to avoid allocation during simulation.
 
 **Visualization** (`src/visualization/`)
-- `MapLibreView` - WebGL-accelerated map using MapLibre GL JS. Renders 3D extruded buildings and streets via GPU. Canvas overlay for agents. Handles building click events via `onBuildingClick` callback.
-- `AgentRenderer` - Draws agents on Canvas overlay, uses `map.project()` for coordinate conversion.
+- `MapLibreView` - WebGL-accelerated map using MapLibre GL JS. Renders 3D extruded buildings and streets via GPU. Handles building click events via `onBuildingClick` callback.
 - `buildingLayer` - Provides `createLegend()` for land use color legend.
-- `streetUsageLayer` - Updates MapLibre heatmap layer data (blue→yellow→red gradient based on frequency).
 
 ### Data Flow
 
 1. GeoJSON files loaded from `public/data/` (weimar-buildings.geojson, weimar-streets.geojson)
 2. Buildings indexed by land use; street graph constructed
 3. O-D matrix calculated from residential→destination pairs with decay function
-4. Simulation loop spawns agents, each following A* path through street network
-5. Agents rendered each frame on Canvas overlay above WebGL map
+4. FlowCalculator computes expected trip counts for each O-D pair
+5. Trips assigned to street segments along shortest paths
+6. Heatmap layer updated with flow data
 
 ### Rendering Architecture
 
-MapLibre GL JS handles static geometry (buildings, streets) via WebGL for smooth 60fps pan/zoom. Agents render on a Canvas overlay.
+MapLibre GL JS handles all geometry (buildings, streets, flow heatmap) via WebGL for smooth 60fps pan/zoom.
 
 ```
 Container (#map)
 ├── MapLibre GL Map (WebGL)
+│   ├── Layer: natural elements (water, vegetation)
 │   ├── Layer: street-shadow (line)
 │   ├── Layer: street-base (line)
-│   ├── Layer: street-usage-heatmap (data-driven line)
+│   ├── Layer: street-usage-heatmap (data-driven line, shows flow intensity)
 │   ├── Layer: top-streets-glow/core (highlight layers)
+│   ├── Layer: path-preview (A-B path visualization)
 │   └── Layer: buildings-fill (fill-extrusion, 3D)
 └── Canvas Overlay (z-index: 10, pointer-events: none)
-    └── Agent dots rendered via AgentRenderer
+    └── Reserved for future overlays
 ```
 
 Buildings use `fill-extrusion` layer with height from GeoJSON `Height` property. Colors are data-driven based on `primaryLandUse` property.
@@ -119,13 +115,6 @@ Buildings use `fill-extrusion` layer with height from GeoJSON `Height` property.
 ### Coordinate System
 
 Coordinates are in degrees (WGS84) - the Heron plugin converts Rhino's meter coordinates to geographic coordinates during GeoJSON export. Distance calculations internally convert degrees to meters using 1° ≈ 111km. The coordinate precision constant (`COORD_PRECISION = 6`) provides ~10cm precision for node merging.
-
-### Key Configuration
-
-See `src/config/constants.ts` for tunable parameters:
-- `WALKING_SPEED`: 1.167 m/s (4.2 km/h)
-- `TIME_SCALE`: 5 (1 real second = 5 simulated seconds)
-- `MAX_ACTIVE_AGENTS`: based on 10% of estimated residents
 
 ### Gravity Model
 
@@ -140,7 +129,7 @@ Where:
 
 ### MiD 2023 Calibration
 
-The simulation uses empirical data from "Mobilität in Deutschland 2023" (German national mobility survey) for realistic pedestrian behavior:
+The flow model uses empirical data from "Mobilität in Deutschland 2023" (German national mobility survey) for realistic pedestrian behavior:
 - **Per-land-use distance decay** - each destination type has its own decay beta based on observed trip durations
 - **Per-land-use max distance** - sports/culture trips can be longer than retail trips
 
@@ -161,7 +150,7 @@ The app uses conditional rendering based on viewport width (breakpoint: 768px).
 
 **Mobile (<768px)**
 - Map fills entire viewport
-- Floating control bar at bottom with 3 buttons: Settings | Simulate | Insights
+- Floating control bar at bottom with 2 buttons: Settings | Insights
 - Panels open as bottom sheets (40vh height) that slide up from bottom
 - Map remains visible and interactive when panels are open
 - Bottom sheet content only renders when open (fixes chart dimension issues)

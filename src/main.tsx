@@ -1,13 +1,13 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { App } from './components/App';
-import { SimulationProvider } from './context/SimulationContext';
+import { FlowProvider } from './context/FlowContext';
 import './index.css';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <SimulationProvider>
+    <FlowProvider>
       <App />
-    </SimulationProvider>
+    </FlowProvider>
   </React.StrictMode>
 );

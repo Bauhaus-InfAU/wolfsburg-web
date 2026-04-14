@@ -1,14 +1,58 @@
 /**
- * MiD 2023 (Mobilität in Deutschland) Pedestrian Trip Data
+ * MiD 2023 (Mobilität in Deutschland) Multi-Modal Trip Data
  *
  * This module contains calibrated parameters derived from the German
- * national mobility survey for pedestrian trips ("zu Fuß").
+ * national mobility survey for pedestrian, bicycle, and car trips.
  *
  * Data source: Mobilität in Deutschland 2023
  * https://www.mobilitaet-in-deutschland.de/
  */
 
-import type { LandUse } from '../config/types';
+import type { LandUse, TransportMode } from '../config/types';
+
+/**
+ * Duration distribution type: array of 8 percentages for time bins
+ * [<5min, 5-10min, 10-15min, 15-20min, 20-30min, 30-45min, 45-60min, 60+min]
+ */
+type DurationDistribution = readonly number[];
+
+/**
+ * Duration distributions by trip purpose
+ */
+interface DurationDistributions {
+  readonly dailyShopping: DurationDistribution;
+  readonly otherShopping: DurationDistribution;
+  readonly shoppingStroll: DurationDistribution;
+  readonly services: DurationDistribution;
+  readonly doctorVisit: DurationDistribution;
+  readonly governmentBankPost: DurationDistribution;
+  readonly culturalVenue: DurationDistribution;
+  readonly eventVisit: DurationDistribution;
+  readonly activeSports: DurationDistribution;
+  readonly restaurantBar: DurationDistribution;
+  readonly churchCemetery: DurationDistribution;
+  readonly coursesHobbyClub: DurationDistribution;
+  readonly accompanyingChildren: DurationDistribution;
+}
+
+/**
+ * Mode-specific travel speeds in meters per minute.
+ * Used to convert trip duration to distance.
+ */
+export const MODE_SPEEDS: Record<TransportMode, number> = {
+  pedestrian: 70,    // 4.2 km/h = 70 m/min
+  bicycle: 250,      // 15 km/h = 250 m/min
+  car: 667,          // 40 km/h (urban average) = 667 m/min
+};
+
+/**
+ * Human-readable labels for transport modes.
+ */
+export const MODE_LABELS: Record<TransportMode, string> = {
+  pedestrian: 'Walking',
+  bicycle: 'Bicycle',
+  car: 'Car',
+};
 
 /**
  * Trip purpose to land use mapping with weighted sample sizes from MiD 2023.
@@ -88,7 +132,7 @@ export const MID_LAND_USE_WEIGHTS: Record<LandUse, number> = {
 };
 
 /**
- * Duration distribution for each trip purpose (percentages).
+ * Duration distribution for each trip purpose (percentages) - PEDESTRIAN.
  * Columns: <5min, 5-10min, 10-15min, 15-20min, 20-30min, 30-45min, 45-60min, 60+min
  */
 export const MID_DURATION_DISTRIBUTIONS = {
@@ -108,6 +152,55 @@ export const MID_DURATION_DISTRIBUTIONS = {
 } as const;
 
 /**
+ * Duration distribution for each trip purpose (percentages) - BICYCLE.
+ * From MiD 2023 bicycle data.
+ */
+export const MID_DURATION_DISTRIBUTIONS_BICYCLE = {
+  dailyShopping: [3, 32, 28, 16, 7, 5, 2, 7],
+  otherShopping: [1, 26, 21, 19, 13, 12, 3, 4],
+  shoppingStroll: [0, 9, 19, 21, 12, 11, 3, 25],
+  services: [1, 16, 34, 21, 12, 9, 2, 6],
+  doctorVisit: [0, 18, 25, 24, 15, 9, 4, 6],
+  governmentBankPost: [2, 27, 22, 16, 7, 9, 4, 12],
+  culturalVenue: [0, 12, 13, 32, 17, 20, 1, 5],
+  eventVisit: [0, 13, 22, 19, 12, 13, 10, 12],
+  activeSports: [0, 15, 22, 16, 9, 8, 4, 26],
+  restaurantBar: [1, 12, 21, 22, 12, 11, 4, 17],
+  churchCemetery: [6, 21, 23, 19, 9, 15, 1, 6],
+  coursesHobbyClub: [0, 23, 27, 20, 10, 11, 1, 7],
+  accompanyingChildren: [1, 18, 16, 23, 9, 10, 6, 18],
+} as const;
+
+/**
+ * Duration distribution for each trip purpose (percentages) - CAR (driver).
+ * From MiD 2023 car driver data.
+ */
+export const MID_DURATION_DISTRIBUTIONS_CAR = {
+  dailyShopping: [2, 25, 28, 18, 8, 7, 3, 8],
+  otherShopping: [2, 17, 19, 21, 16, 13, 3, 9],
+  shoppingStroll: [0, 7, 12, 17, 20, 18, 4, 23],
+  services: [1, 16, 20, 22, 18, 14, 4, 6],
+  doctorVisit: [0, 10, 20, 19, 18, 19, 4, 9],
+  governmentBankPost: [1, 27, 22, 16, 14, 8, 4, 7],
+  culturalVenue: [0, 3, 8, 17, 16, 22, 12, 22],
+  eventVisit: [1, 7, 16, 11, 17, 18, 7, 22],
+  activeSports: [1, 11, 19, 27, 18, 14, 3, 7],
+  restaurantBar: [0, 10, 21, 21, 16, 16, 5, 11],
+  churchCemetery: [1, 23, 24, 20, 10, 12, 3, 7],
+  coursesHobbyClub: [1, 15, 17, 20, 17, 18, 4, 9],
+  accompanyingChildren: [0, 22, 15, 15, 21, 15, 4, 8],
+} as const;
+
+/**
+ * Mode-specific duration distributions per trip purpose.
+ */
+export const MODE_DURATION_DISTRIBUTIONS: Record<TransportMode, DurationDistributions> = {
+  pedestrian: MID_DURATION_DISTRIBUTIONS,
+  bicycle: MID_DURATION_DISTRIBUTIONS_BICYCLE,
+  car: MID_DURATION_DISTRIBUTIONS_CAR,
+};
+
+/**
  * Calculate median trip duration in minutes from duration distribution.
  * Uses bin midpoints: 2.5, 7.5, 12.5, 17.5, 25, 37.5, 52.5, 75 minutes
  */
@@ -124,27 +217,29 @@ function calculateMedianDuration(distribution: readonly number[]): number {
 }
 
 /**
- * Calculate decay beta from median trip duration.
- * Uses walking speed of 4.2 km/h = 1.167 m/s = 70 m/min.
+ * Calculate decay beta from median trip duration and mode speed.
  * Beta is calibrated so that 50% of trips occur within median distance.
  * P(d) = e^(-beta * d) = 0.5 at median distance
  * beta = ln(2) / medianDistance
  */
-function calculateDecayBeta(medianDurationMinutes: number): number {
-  const walkingSpeedMPerMin = 70; // 1.167 m/s * 60 = 4.2 km/h
-  const medianDistanceM = medianDurationMinutes * walkingSpeedMPerMin;
+function calculateDecayBeta(medianDurationMinutes: number, speedMPerMin: number): number {
+  const medianDistanceM = medianDurationMinutes * speedMPerMin;
   return Math.log(2) / medianDistanceM;
 }
 
 /**
- * Per-land-use decay beta values derived from MiD duration distributions.
- * Lower beta = people willing to travel farther.
+ * Calculate per-land-use decay beta values for a given transport mode.
  */
-export const MID_DECAY_BETA: Record<LandUse, number> = (() => {
+function calculateModeDecayBetas(
+  mode: TransportMode,
+  durationDistributions: DurationDistributions
+): Record<LandUse, number> {
+  const speed = MODE_SPEEDS[mode];
+
   // Calculate weighted average duration per land use
   const landUseDurations: Partial<Record<LandUse, { totalDuration: number; totalWeight: number }>> = {};
 
-  const purposeMap: Record<keyof typeof MID_DURATION_DISTRIBUTIONS, LandUse> = {
+  const purposeMap: Record<keyof DurationDistributions, LandUse> = {
     dailyShopping: 'Generic Retail',
     otherShopping: 'Generic Retail',
     shoppingStroll: 'Generic Retail',
@@ -160,10 +255,10 @@ export const MID_DECAY_BETA: Record<LandUse, number> = (() => {
     accompanyingChildren: 'Generic Education',
   };
 
-  for (const [purpose, dist] of Object.entries(MID_DURATION_DISTRIBUTIONS)) {
-    const landUse = purposeMap[purpose as keyof typeof MID_DURATION_DISTRIBUTIONS];
+  for (const [purpose, dist] of Object.entries(durationDistributions)) {
+    const landUse = purposeMap[purpose as keyof DurationDistributions];
     const weight = MID_TRIP_PURPOSE_DATA[purpose as keyof typeof MID_TRIP_PURPOSE_DATA].sampleSize;
-    const medianDuration = calculateMedianDuration(dist);
+    const medianDuration = calculateMedianDuration(dist as DurationDistribution);
 
     if (!landUseDurations[landUse]) {
       landUseDurations[landUse] = { totalDuration: 0, totalWeight: 0 };
@@ -176,11 +271,11 @@ export const MID_DECAY_BETA: Record<LandUse, number> = (() => {
   const betas: Partial<Record<LandUse, number>> = {};
   for (const [landUse, data] of Object.entries(landUseDurations)) {
     const avgDuration = data!.totalDuration / data!.totalWeight;
-    betas[landUse as LandUse] = calculateDecayBeta(avgDuration);
+    betas[landUse as LandUse] = calculateDecayBeta(avgDuration, speed);
   }
 
-  // Default beta for land uses without MiD data
-  const defaultBeta = 0.002;
+  // Default beta (based on median retail trip duration)
+  const defaultBeta = betas['Generic Retail'] ?? 0.002 / (speed / 70); // Scale with speed
 
   return {
     'Generic Retail': betas['Generic Retail'] ?? defaultBeta,
@@ -200,12 +295,30 @@ export const MID_DECAY_BETA: Record<LandUse, number> = (() => {
     'Undefined Land use': defaultBeta,
     'Generic Residential': defaultBeta,
   };
-})();
+}
 
 /**
- * Per-land-use maximum trip distance in meters.
+ * Per-land-use decay beta values derived from MiD duration distributions.
+ * Lower beta = people willing to travel farther.
+ * Kept for backward compatibility - use MODE_DECAY_BETA[mode] instead.
+ */
+export const MID_DECAY_BETA: Record<LandUse, number> = calculateModeDecayBetas('pedestrian', MID_DURATION_DISTRIBUTIONS);
+
+/**
+ * Mode-specific decay beta values per land use.
+ * Lower beta = people willing to travel farther.
+ */
+export const MODE_DECAY_BETA: Record<TransportMode, Record<LandUse, number>> = {
+  pedestrian: calculateModeDecayBetas('pedestrian', MID_DURATION_DISTRIBUTIONS),
+  bicycle: calculateModeDecayBetas('bicycle', MID_DURATION_DISTRIBUTIONS_BICYCLE),
+  car: calculateModeDecayBetas('car', MID_DURATION_DISTRIBUTIONS_CAR),
+};
+
+/**
+ * Per-land-use maximum trip distance in meters (PEDESTRIAN).
  * Derived from 95th percentile of trip durations in MiD data.
- * Walking at 4.2 km/h = 1.167 m/s = 70 m/min.
+ * Walking at 4.2 km/h = 70 m/min.
+ * Kept for backward compatibility - use MODE_MAX_DISTANCE[mode] instead.
  */
 export const MID_MAX_DISTANCE: Record<LandUse, number> = {
   // Sports and culture have many long trips (60+ min common)
@@ -232,3 +345,63 @@ export const MID_MAX_DISTANCE: Record<LandUse, number> = {
   'Undefined Land use': 2000,
   'Generic Residential': 0,
 };
+
+/**
+ * Mode-specific maximum trip distances in meters.
+ * Scaled based on mode speed ratios.
+ */
+export const MODE_MAX_DISTANCE: Record<TransportMode, Record<LandUse, number>> = {
+  pedestrian: MID_MAX_DISTANCE,
+  bicycle: {
+    // Bicycle can travel ~3.5x pedestrian distance in same time
+    'Generic Sport Facility': 18000,
+    'Generic Culture': 14000,
+    'Generic Entertainment': 10000,
+    'Generic Education': 10000,
+    'Generic Civic Function': 9000,
+    'Generic Health and Wellbeing': 9000,
+    'Generic Accommodation': 9000,
+    'Generic Retail': 7000,
+    'Generic Food and Beverage Service': 7000,
+    'Generic Service': 7000,
+    'Generic Office Building': 7000,
+    'Generic Light Industrial': 7000,
+    'Generic Transportation Service': 7000,
+    'Generic Utilities': 7000,
+    'Undefined Land use': 7000,
+    'Generic Residential': 0,
+  },
+  car: {
+    // Car can travel ~9.5x pedestrian distance in same time
+    'Generic Sport Facility': 50000,
+    'Generic Culture': 40000,
+    'Generic Entertainment': 30000,
+    'Generic Education': 30000,
+    'Generic Civic Function': 25000,
+    'Generic Health and Wellbeing': 25000,
+    'Generic Accommodation': 25000,
+    'Generic Retail': 20000,
+    'Generic Food and Beverage Service': 20000,
+    'Generic Service': 20000,
+    'Generic Office Building': 20000,
+    'Generic Light Industrial': 20000,
+    'Generic Transportation Service': 20000,
+    'Generic Utilities': 20000,
+    'Undefined Land use': 20000,
+    'Generic Residential': 0,
+  },
+};
+
+/**
+ * Get decay beta for a specific land use and transport mode.
+ */
+export function getDecayBeta(landUse: LandUse, mode: TransportMode = 'pedestrian'): number {
+  return MODE_DECAY_BETA[mode][landUse];
+}
+
+/**
+ * Get max distance for a specific land use and transport mode.
+ */
+export function getMaxDistance(landUse: LandUse, mode: TransportMode = 'pedestrian'): number {
+  return MODE_MAX_DISTANCE[mode][landUse];
+}

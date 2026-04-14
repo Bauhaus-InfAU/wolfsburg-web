@@ -93,7 +93,7 @@ export const SIMULATION_DEFAULTS = {
   // ~10% of population walking at any given time during peak
   ACTIVE_AGENT_RATIO: 0.1,
   MIN_ACTIVE_AGENTS: 100, // minimum for small areas
-  PATH_CACHE_SIZE: 1000,
+  PATH_CACHE_SIZE: 30000,
 
   // Rendering
   AGENT_RADIUS: 3, // pixels

@@ -32,6 +32,14 @@ export class StreetUsageTracker {
    * Record usage for all segments in a path.
    */
   recordPath(path: [number, number][]): void {
+    this.recordPathWithWeight(path, 1);
+  }
+
+  /**
+   * Record usage for all segments in a path with a weight/count multiplier.
+   * More efficient than calling recordPath multiple times.
+   */
+  recordPathWithWeight(path: [number, number][], weight: number): void {
     for (let i = 0; i < path.length - 1; i++) {
       const segmentKey = this.getSegmentKey(path[i], path[i + 1]);
       let segment = this.segments.get(segmentKey);
@@ -40,7 +48,7 @@ export class StreetUsageTracker {
         segment = { from: path[i], to: path[i + 1], count: 0 };
         this.segments.set(segmentKey, segment);
       }
-      segment.count++;
+      segment.count += weight;
       if (segment.count > this.maxCount) {
         this.maxCount = segment.count;
       }

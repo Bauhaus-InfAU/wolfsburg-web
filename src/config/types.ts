@@ -1,5 +1,8 @@
 import type { Feature, FeatureCollection, MultiPolygon, LineString } from 'geojson';
 
+// Transport modes supported by the flow model
+export type TransportMode = 'pedestrian' | 'bicycle' | 'car';
+
 // Land use types matching the GeoJSON properties
 export type LandUse =
   | 'Generic Residential'
@@ -26,6 +29,8 @@ export interface BuildingProperties {
   Floors: number;
   Detached: boolean;
   Adress: string;
+  // Wolfsburg-specific: surface level indicator
+  'ofl__bez'?: string | null; // "Unter der Erdoberfläche" = underground, "Aufgeständert" = elevated
   // Land use boolean fields
   'Generic Residential': number;
   'Generic Light Industrial': number;
@@ -82,6 +87,7 @@ export interface GraphEdge {
   from: string;
   to: string;
   weight: number; // distance in meters
+  streetClass?: string; // Street class for mode-specific routing (e.g., 'footway', 'tertiary', 'path')
 }
 
 // Path result
@@ -132,3 +138,15 @@ export interface SpatialItem {
   maxY: number;
   id: string;
 }
+
+// Re-export partition types for convenience
+export type {
+  GridCell,
+  CellBounds,
+  PrecomputedPath,
+  CrossCellEdge,
+  PartitionedGraph,
+  GraphChange,
+  PartitionStats,
+  HierarchicalPathResult,
+} from '../data/partition/types';

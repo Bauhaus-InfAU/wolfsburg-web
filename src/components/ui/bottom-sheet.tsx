@@ -21,7 +21,7 @@ export function BottomSheet({
         'fixed left-0 right-0 bottom-0 z-50 bg-card rounded-t-2xl border-t border-border shadow-lg',
         'transform transition-transform duration-300 ease-out',
         'flex flex-col',
-        'h-[40vh]',
+        'h-[50vh]',
         isOpen ? 'translate-y-0' : 'translate-y-full'
       )}
     >

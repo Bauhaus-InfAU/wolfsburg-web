@@ -4,7 +4,7 @@ import path from 'path';
 
 export default defineConfig({
   plugins: [react()],
-  base: '/weimar-web/',
+  base: '/wolfsburg-web/',
   build: {
     outDir: 'dist',
     assetsDir: 'assets',

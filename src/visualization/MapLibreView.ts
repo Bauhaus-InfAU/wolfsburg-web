@@ -1,7 +1,32 @@
 import maplibregl from 'maplibre-gl';
 import type { LandUse, BuildingCollection, StreetCollection } from '../config/types';
 import type { SegmentUsage } from '../data/StreetUsageTracker';
+import type { BlockCollection } from '../data/dataLoader';
 import { LAND_USE_COLORS } from '../config/constants';
+import { getCityConfig } from '../config/cityConfig';
+import type { HeatmapGradient } from '../config/gradientPresets';
+
+// Natural element categories from blocks tn__bez field
+const WATER_TYPES = [
+  'Fliessgewässer',      // Flowing water (rivers, streams, canals)
+  'Stehendes Gewässer',  // Standing water (lakes, ponds)
+  'Hafenbecken',         // Harbor basin
+  'Sumpf',               // Swamp
+  'Moor',                // Bog/Moor
+];
+
+const VEGETATION_TYPES = [
+  'Wald',                // Forest
+  'Gehölz',              // Woodland/Grove
+  'Heide',               // Heath
+];
+
+const GREEN_SPACE_TYPES = [
+  'Sport-, Freizeit- und Erholungsfläche, Siedlungsgrünfläche', // Urban green space
+  'Sport-, Freizeit- und Erholungsfläche, Park',                // Park
+  'Sport-, Freizeit- und Erholungsfläche, Kleingarten',         // Allotment garden
+  'Landwirtschaft, Grünland',                                    // Grassland
+];
 
 /**
  * MapLibre GL JS wrapper for WebGL-accelerated map rendering.
@@ -22,12 +47,14 @@ export class MapLibreView {
     this.container = document.getElementById(containerId)!;
     this.container.style.position = 'relative';
 
+    const cityConfig = getCityConfig();
+
     // Create MapLibre map with minimal style (no base map)
     this.map = new maplibregl.Map({
       container: containerId,
       style: {
         version: 8,
-        name: 'Weimar Simulation',
+        name: `${cityConfig.name} Simulation`,
         sources: {},
         layers: [
           {
@@ -45,8 +72,8 @@ export class MapLibreView {
           intensity: 0.4,
         },
       },
-      center: [11.33, 50.98], // Weimar approximate center
-      zoom: 16, // Higher zoom for better 3D visibility
+      center: cityConfig.center,
+      zoom: cityConfig.zoom,
       pitch: 60, // Steeper tilt for 3D view
       bearing: -17, // Slight rotation for better perspective
       attributionControl: false,
@@ -222,6 +249,97 @@ export class MapLibreView {
   }
 
   /**
+   * Add natural elements (water, vegetation) from blocks GeoJSON.
+   * Should be called before streets/buildings so they appear underneath.
+   */
+  addNaturalElementsLayer(blockData: BlockCollection): void {
+    // Helper to check if tn__bez matches any prefix
+    const matchesType = (tnBez: string, types: string[]): boolean => {
+      return types.some(type => tnBez.startsWith(type));
+    };
+
+    // Filter features for water
+    const waterFeatures = blockData.features.filter(
+      f => f.properties.tn__bez && matchesType(f.properties.tn__bez, WATER_TYPES)
+    );
+
+    // Filter features for vegetation (forests, groves)
+    const vegetationFeatures = blockData.features.filter(
+      f => f.properties.tn__bez && matchesType(f.properties.tn__bez, VEGETATION_TYPES)
+    );
+
+    // Filter features for green spaces (parks, urban green)
+    const greenSpaceFeatures = blockData.features.filter(
+      f => f.properties.tn__bez && GREEN_SPACE_TYPES.includes(f.properties.tn__bez)
+    );
+
+    console.log(`Natural elements: ${waterFeatures.length} water, ${vegetationFeatures.length} vegetation, ${greenSpaceFeatures.length} green space`);
+
+    // Add water source and layer
+    if (waterFeatures.length > 0) {
+      this.map.addSource('water', {
+        type: 'geojson',
+        data: {
+          type: 'FeatureCollection',
+          features: waterFeatures,
+        },
+      });
+
+      this.map.addLayer({
+        id: 'water-fill',
+        type: 'fill',
+        source: 'water',
+        paint: {
+          'fill-color': '#a8d4e6', // Light blue for water
+          'fill-opacity': 0.7,
+        },
+      });
+    }
+
+    // Add vegetation source and layer (forests, groves)
+    if (vegetationFeatures.length > 0) {
+      this.map.addSource('vegetation', {
+        type: 'geojson',
+        data: {
+          type: 'FeatureCollection',
+          features: vegetationFeatures,
+        },
+      });
+
+      this.map.addLayer({
+        id: 'vegetation-fill',
+        type: 'fill',
+        source: 'vegetation',
+        paint: {
+          'fill-color': '#8fbc8f', // Dark sea green for forests
+          'fill-opacity': 0.6,
+        },
+      });
+    }
+
+    // Add green space source and layer (parks, urban green)
+    if (greenSpaceFeatures.length > 0) {
+      this.map.addSource('green-space', {
+        type: 'geojson',
+        data: {
+          type: 'FeatureCollection',
+          features: greenSpaceFeatures,
+        },
+      });
+
+      this.map.addLayer({
+        id: 'green-space-fill',
+        type: 'fill',
+        source: 'green-space',
+        paint: {
+          'fill-color': '#c8e6c9', // Light green for urban green spaces
+          'fill-opacity': 0.5,
+        },
+      });
+    }
+  }
+
+  /**
    * Add heatmap source and layer (starts empty, updated dynamically).
    */
   addHeatmapLayer(): void {
@@ -385,11 +503,26 @@ export class MapLibreView {
 
   /**
    * Add buildings source and layers with data-driven styling.
+   * Handles underground buildings (ofl__bez = "Unter der Erdoberfläche") separately.
    */
   addBuildingsLayer(buildingData: BuildingCollection): void {
+    // Split buildings into above-ground and underground
+    const aboveGroundFeatures = buildingData.features.filter(
+      f => f.properties['ofl__bez'] !== 'Unter der Erdoberfläche'
+    );
+    const undergroundFeatures = buildingData.features.filter(
+      f => f.properties['ofl__bez'] === 'Unter der Erdoberfläche'
+    );
+
+    console.log(`Buildings: ${aboveGroundFeatures.length} above ground, ${undergroundFeatures.length} underground`);
+
+    // Add source for above-ground buildings
     this.map.addSource('buildings', {
       type: 'geojson',
-      data: buildingData,
+      data: {
+        type: 'FeatureCollection',
+        features: aboveGroundFeatures,
+      },
     });
 
     // Build the match expression for land use colors
@@ -418,7 +551,6 @@ export class MapLibreView {
 
     // 3D extruded buildings based on Height property from GeoJSON
     // Height is stored as string in GeoJSON, convert to number
-    // Scale height for visibility (coordinates are in local system, not WGS84 meters)
     this.map.addLayer({
       id: 'buildings-fill',
       type: 'fill-extrusion',
@@ -428,12 +560,47 @@ export class MapLibreView {
         'fill-extrusion-height': [
           '*',
           ['to-number', ['coalesce', ['get', 'Height'], '5']],
-          1, // Scale factor: convert meters to local coordinate units
+          1,
         ],
         'fill-extrusion-base': 0,
         'fill-extrusion-opacity': 0.9,
       },
     });
+
+    // Add underground buildings as flat, very transparent outlines at ground level
+    if (undergroundFeatures.length > 0) {
+      this.map.addSource('buildings-underground', {
+        type: 'geojson',
+        data: {
+          type: 'FeatureCollection',
+          features: undergroundFeatures,
+        },
+      });
+
+      // Flat fill for underground footprint
+      this.map.addLayer({
+        id: 'buildings-underground-fill',
+        type: 'fill',
+        source: 'buildings-underground',
+        paint: {
+          'fill-color': '#666666', // Gray for underground
+          'fill-opacity': 0.15,
+        },
+      });
+
+      // Dashed outline to indicate underground
+      this.map.addLayer({
+        id: 'buildings-underground-outline',
+        type: 'line',
+        source: 'buildings-underground',
+        paint: {
+          'line-color': '#444444',
+          'line-width': 1,
+          'line-dasharray': [2, 2], // Dashed line
+          'line-opacity': 0.4,
+        },
+      });
+    }
   }
 
   /**
@@ -461,6 +628,30 @@ export class MapLibreView {
       type: 'FeatureCollection',
       features,
     });
+  }
+
+  /**
+   * Update the heatmap gradient colors.
+   * Supports variable number of stops.
+   */
+  updateHeatmapGradient(gradient: HeatmapGradient): void {
+    if (!this.map.getLayer('street-usage-heatmap')) return;
+
+    // Sort stops by position and build the interpolate expression
+    const sortedStops = [...gradient.stops].sort((a, b) => a.position - b.position);
+
+    // Build interpolation array: [position1, color1, position2, color2, ...]
+    const interpolationStops: (string | number)[] = [];
+    for (const stop of sortedStops) {
+      interpolationStops.push(stop.position, stop.color);
+    }
+
+    this.map.setPaintProperty('street-usage-heatmap', 'line-color', [
+      'interpolate',
+      ['linear'],
+      ['get', 'normalized'],
+      ...interpolationStops,
+    ] as maplibregl.ExpressionSpecification);
   }
 
   /**
@@ -572,6 +763,64 @@ export class MapLibreView {
   clearLandUseFilter(): void {
     if (this.map.getLayer('buildings-fill')) {
       this.map.setFilter('buildings-fill', null);
+    }
+  }
+
+  /**
+   * Set buildings and natural elements to monochrome (gray) mode for better heatmap readability.
+   */
+  setMonochromeBuildings(monochrome: boolean): void {
+    if (monochrome) {
+      // Set all buildings to neutral gray
+      if (this.map.getLayer('buildings-fill')) {
+        this.map.setPaintProperty('buildings-fill', 'fill-extrusion-color', '#d4d4d4');
+      }
+      // Set natural elements to gray tones
+      if (this.map.getLayer('water-fill')) {
+        this.map.setPaintProperty('water-fill', 'fill-color', '#c8c8c8');
+      }
+      if (this.map.getLayer('vegetation-fill')) {
+        this.map.setPaintProperty('vegetation-fill', 'fill-color', '#e0e0e0');
+      }
+      if (this.map.getLayer('green-space-fill')) {
+        this.map.setPaintProperty('green-space-fill', 'fill-color', '#ebebeb');
+      }
+    } else {
+      // Restore data-driven land use colors for buildings
+      if (this.map.getLayer('buildings-fill')) {
+        const colorMatchExpression = [
+          'match',
+          ['get', 'primaryLandUse'],
+          'Generic Residential', LAND_USE_COLORS['Generic Residential'],
+          'Generic Retail', LAND_USE_COLORS['Generic Retail'],
+          'Generic Food and Beverage Service', LAND_USE_COLORS['Generic Food and Beverage Service'],
+          'Generic Entertainment', LAND_USE_COLORS['Generic Entertainment'],
+          'Generic Service', LAND_USE_COLORS['Generic Service'],
+          'Generic Health and Wellbeing', LAND_USE_COLORS['Generic Health and Wellbeing'],
+          'Generic Education', LAND_USE_COLORS['Generic Education'],
+          'Generic Office Building', LAND_USE_COLORS['Generic Office Building'],
+          'Generic Culture', LAND_USE_COLORS['Generic Culture'],
+          'Generic Civic Function', LAND_USE_COLORS['Generic Civic Function'],
+          'Generic Sport Facility', LAND_USE_COLORS['Generic Sport Facility'],
+          'Generic Light Industrial', LAND_USE_COLORS['Generic Light Industrial'],
+          'Generic Accommodation', LAND_USE_COLORS['Generic Accommodation'],
+          'Generic Transportation Service', LAND_USE_COLORS['Generic Transportation Service'],
+          'Generic Utilities', LAND_USE_COLORS['Generic Utilities'],
+          'Undefined Land use', LAND_USE_COLORS['Undefined Land use'],
+          LAND_USE_COLORS['Undefined Land use'], // fallback
+        ] as maplibregl.ExpressionSpecification;
+        this.map.setPaintProperty('buildings-fill', 'fill-extrusion-color', colorMatchExpression);
+      }
+      // Restore natural element colors
+      if (this.map.getLayer('water-fill')) {
+        this.map.setPaintProperty('water-fill', 'fill-color', '#a8d4e6');
+      }
+      if (this.map.getLayer('vegetation-fill')) {
+        this.map.setPaintProperty('vegetation-fill', 'fill-color', '#8fbc8f');
+      }
+      if (this.map.getLayer('green-space-fill')) {
+        this.map.setPaintProperty('green-space-fill', 'fill-color', '#c8e6c9');
+      }
     }
   }
 

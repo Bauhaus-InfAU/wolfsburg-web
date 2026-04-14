@@ -8,6 +8,14 @@ import type {
   SpatialItem,
 } from '../config/types';
 import { LAND_USE_WEIGHTS, SQM_PER_PERSON } from '../config/constants';
+import { getCityConfig, type CityConfig } from '../config/cityConfig';
+import { utm32nToWgs84 } from '../utils/coordinateTransform';
+import {
+  getLandUseFromGfk,
+  getDefaultHeight,
+  getDefaultFloors,
+  DEFAULT_BUILDING_FLOOR_AREA,
+} from '../config/wolfsburgMapping';
 
 // All land use keys to check
 const LAND_USE_KEYS: LandUse[] = [
@@ -29,21 +37,40 @@ const LAND_USE_KEYS: LandUse[] = [
   'Undefined Land use',
 ];
 
+// Wolfsburg building properties (from gfk classification)
+interface WolfsburgBuildingProperties {
+  fid: number;
+  objid: string;
+  gfk: string;
+  gfk__bez: string;
+  baw?: string;
+  baw__bez?: string;
+  ofl?: string;
+  ofl__bez?: string;
+  bez?: string;  // Street name
+  hnr?: string;  // House number
+}
+
 export class BuildingStore {
   public buildings: Map<string, Building> = new Map();
   public residential: Building[] = [];
   public destinations: Building[] = [];
   public spatialIndex: RBush<SpatialItem>;
+  private cityConfig: CityConfig;
 
   constructor() {
     this.spatialIndex = new RBush();
+    this.cityConfig = getCityConfig();
   }
 
   loadFromGeoJSON(collection: BuildingCollection): void {
     const spatialItems: SpatialItem[] = [];
 
     for (const feature of collection.features) {
-      const building = this.processFeature(feature);
+      const building = this.cityConfig.dataFormat === 'wolfsburg'
+        ? this.processWolfsburgFeature(feature as unknown as GeoJSON.Feature<GeoJSON.MultiPolygon, WolfsburgBuildingProperties>)
+        : this.processFeature(feature);
+
       if (!building) continue;
 
       this.buildings.set(building.id, building);
@@ -73,6 +100,173 @@ export class BuildingStore {
     }
 
     this.spatialIndex.load(spatialItems);
+
+    console.log(`BuildingStore loaded: ${this.buildings.size} buildings, ${this.residential.length} residential, ${this.destinations.length} destinations`);
+  }
+
+  /**
+   * Process a Wolfsburg building feature
+   * Handles UTM coordinates and gfk classification
+   */
+  private processWolfsburgFeature(
+    feature: GeoJSON.Feature<GeoJSON.MultiPolygon, WolfsburgBuildingProperties>
+  ): Building | null {
+    const props = feature.properties;
+    const id = props.objid || `building-${props.fid}`;
+
+    if (!id) return null;
+
+    // Calculate centroid from MultiPolygon (in UTM coordinates)
+    const utmCentroid = this.calculateCentroid(feature as unknown as BuildingFeature);
+    if (!utmCentroid) return null;
+
+    // Transform UTM to WGS84
+    const centroid = this.cityConfig.coordinateSystem === 'utm32n'
+      ? utm32nToWgs84(utmCentroid[0], utmCentroid[1])
+      : utmCentroid;
+
+    // Get land use from gfk code
+    const primaryLandUse = getLandUseFromGfk(props.gfk);
+    const landUses: LandUse[] = [primaryLandUse];
+
+    // Mixed-use buildings (codes like 1120, 2310) have multiple land uses
+    if (props.gfk === '1120' || props.gfk === '1110') {
+      // Residential with retail/services
+      landUses.push('Generic Retail');
+    } else if (props.gfk === '1130' || props.gfk === '2320') {
+      // Residential with industrial
+      landUses.push('Generic Light Industrial');
+    } else if (props.gfk === '2310') {
+      // Commercial with residential
+      landUses.push('Generic Residential');
+    } else if (props.gfk === '3100') {
+      // Public with residential
+      landUses.push('Generic Residential');
+    }
+
+    // Estimate building dimensions
+    const floors = getDefaultFloors(props.gfk);
+    const height = getDefaultHeight(props.gfk);
+
+    // Calculate footprint area from geometry (rough estimate)
+    const footprintArea = this.estimateFootprintArea(feature as unknown as BuildingFeature);
+
+    // Calculate floor areas
+    const totalFloorArea = footprintArea * floors;
+    const landUseAreas = new Map<LandUse, number>();
+
+    // Distribute floor area among land uses
+    if (landUses.length === 1) {
+      landUseAreas.set(primaryLandUse, totalFloorArea);
+    } else {
+      // For mixed use, assume primary use gets 70%, secondary 30%
+      landUseAreas.set(primaryLandUse, totalFloorArea * 0.7);
+      for (let i = 1; i < landUses.length; i++) {
+        landUseAreas.set(landUses[i], totalFloorArea * 0.3 / (landUses.length - 1));
+      }
+    }
+
+    // Calculate residential metrics
+    const residentialArea = landUseAreas.get('Generic Residential') || 0;
+    const estimatedResidents = residentialArea > 0 ? residentialArea / SQM_PER_PERSON : 0;
+
+    // Create address from bez and hnr
+    const address = [props.bez, props.hnr].filter(Boolean).join(' ') || id;
+
+    // Create a modified feature with WGS84 coordinates for visualization
+    const transformedFeature = this.transformFeatureCoordinates(feature as unknown as BuildingFeature);
+
+    return {
+      id,
+      centroid,
+      floors,
+      height,
+      residentialArea,
+      estimatedResidents,
+      landUses,
+      landUseAreas,
+      primaryLandUse,
+      feature: {
+        ...transformedFeature,
+        properties: {
+          'Building ID': id,
+          Height: height,
+          Floors: floors,
+          Detached: false,
+          Adress: address,
+          'ofl__bez': props.ofl__bez || null, // Preserve surface level indicator
+          ...Object.fromEntries(
+            LAND_USE_KEYS.map(key => [key, landUseAreas.get(key) || 0])
+          ),
+        } as BuildingProperties,
+      },
+    };
+  }
+
+  /**
+   * Transform feature coordinates from UTM to WGS84
+   */
+  private transformFeatureCoordinates(feature: BuildingFeature): BuildingFeature {
+    if (this.cityConfig.coordinateSystem !== 'utm32n') {
+      return feature;
+    }
+
+    const transformCoords = (coords: number[][]): number[][] => {
+      return coords.map(coord => {
+        const [lng, lat] = utm32nToWgs84(coord[0], coord[1]);
+        return coord.length > 2 ? [lng, lat, coord[2]] : [lng, lat];
+      });
+    };
+
+    const transformRing = (ring: number[][][]): number[][][] => {
+      return ring.map(transformCoords);
+    };
+
+    const newCoordinates = feature.geometry.coordinates.map(transformRing);
+
+    return {
+      ...feature,
+      geometry: {
+        ...feature.geometry,
+        coordinates: newCoordinates,
+      },
+    };
+  }
+
+  /**
+   * Estimate footprint area from polygon geometry (in sqm)
+   */
+  private estimateFootprintArea(feature: BuildingFeature): number {
+    const coords = feature.geometry.coordinates;
+    if (!coords || coords.length === 0) return DEFAULT_BUILDING_FLOOR_AREA;
+
+    const exteriorRing = coords[0]?.[0];
+    if (!exteriorRing || exteriorRing.length < 3) return DEFAULT_BUILDING_FLOOR_AREA;
+
+    // Use Shoelace formula for polygon area
+    // Note: For UTM coordinates, this gives area in square meters directly
+    // For WGS84, we'd need to convert first
+    let area = 0;
+    const n = exteriorRing.length;
+
+    for (let i = 0; i < n; i++) {
+      const j = (i + 1) % n;
+      area += exteriorRing[i][0] * exteriorRing[j][1];
+      area -= exteriorRing[j][0] * exteriorRing[i][1];
+    }
+
+    area = Math.abs(area) / 2;
+
+    // If coordinates are WGS84, convert from degrees to approximate sqm
+    if (this.cityConfig.coordinateSystem === 'wgs84') {
+      // At ~52° latitude (Wolfsburg), 1° ≈ 111km lat, 67km lng
+      const avgLat = exteriorRing.reduce((sum, c) => sum + c[1], 0) / n;
+      const metersPerDegreeLat = 111320;
+      const metersPerDegreeLng = metersPerDegreeLat * Math.cos(avgLat * Math.PI / 180);
+      area = area * metersPerDegreeLat * metersPerDegreeLng;
+    }
+
+    return Math.max(area, DEFAULT_BUILDING_FLOOR_AREA);
   }
 
   private processFeature(feature: BuildingFeature): Building | null {

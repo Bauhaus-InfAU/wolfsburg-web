@@ -2,11 +2,11 @@ import { useState, useCallback } from 'react';
 import { cn } from '@/lib/utils';
 import { ChevronDown } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { PlaybackControls } from './PlaybackControls';
-import { SimulationParams } from './SimulationParams';
 import { LandUseToggles } from './LandUseToggles';
 import { VisualizationToggles } from './VisualizationToggles';
 import { StatsDisplay } from './StatsDisplay';
+import { CalculateButton } from './CalculateButton';
+import { TransportModeSelector } from './TransportModeSelector';
 
 const MIN_WIDTH = 300;
 const MAX_WIDTH = 500;
@@ -65,14 +65,22 @@ export function ControlPanel() {
           {/* Header */}
           <div className="sticky top-0 bg-card/95 backdrop-blur-sm z-10 px-5 py-4 border-b border-border">
             <h1 className="text-sm font-semibold text-foreground text-center">
-              Weimar Pedestrian Flow
+              Wolfsburg Flow Model
             </h1>
           </div>
 
           <div className="p-4 space-y-1">
-            {/* Playback & Stats */}
-            <CollapsibleSection title="Playback" defaultOpen>
-              <PlaybackControls />
+            {/* Flow Statistics */}
+            <CollapsibleSection title="Flow Statistics" defaultOpen>
+              <div className="space-y-3">
+                <div>
+                  <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Transport Mode</span>
+                  <div className="mt-1.5">
+                    <TransportModeSelector />
+                  </div>
+                </div>
+                <CalculateButton />
+              </div>
               <div className="mt-3 pt-3 border-t border-border">
                 <StatsDisplay />
               </div>
@@ -83,12 +91,7 @@ export function ControlPanel() {
               <VisualizationToggles />
             </CollapsibleSection>
 
-            {/* Parameters */}
-            <CollapsibleSection title="Simulation Parameters" defaultOpen>
-              <SimulationParams />
-            </CollapsibleSection>
-
-            {/* Filters */}
+            {/* Land Use Filters */}
             <CollapsibleSection title="Land Use Types" defaultOpen>
               <LandUseToggles />
             </CollapsibleSection>
@@ -97,7 +100,7 @@ export function ControlPanel() {
           {/* About - always visible footer */}
           <div className="px-5 py-4 border-t border-border mt-auto">
             <p className="text-[10px] text-muted-foreground leading-relaxed">
-              This simulation models pedestrian flows in Weimar using an origin-destination gravity model calibrated with MiD 2023 mobility data. Residents generate trips to nearby services based on distance decay functions, with agents following A* pathfinding through the street network.
+              This tool models trip distribution in Wolfsburg using an origin-destination gravity model calibrated with MiD 2023 mobility data. Select transport mode to compare pedestrian, bicycle, and car flows. Toggle land use types to see how flows change.
             </p>
           </div>
           </div>

@@ -1,10 +1,8 @@
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo } from 'react';
 import { useSimulation } from './useSimulation';
 import type { LandUse } from '../config/types';
 import { LAND_USE_COLORS, LAND_USE_DISPLAY_NAMES } from '../config/constants';
 import { MID_MAX_DISTANCE } from '../data/midMobilityData';
-
-const REFRESH_INTERVAL_MS = 1000; // Refresh data every second
 
 export interface TopStreet {
   from: [number, number];
@@ -38,22 +36,8 @@ export function useUrbanInsights(): UrbanInsights {
     getStreetUsageMax,
     getAverageDistancesByLandUse,
     enabledLandUses,
-    isRunning,
     topStreetsRange,
   } = useSimulation();
-
-  // Force periodic refresh while simulation is running
-  const [refreshTick, setRefreshTick] = useState(0);
-
-  useEffect(() => {
-    if (!isRunning) return;
-
-    const interval = setInterval(() => {
-      setRefreshTick(t => t + 1);
-    }, REFRESH_INTERVAL_MS);
-
-    return () => clearInterval(interval);
-  }, [isRunning]);
 
   return useMemo(() => {
     // Get street usage data
@@ -114,5 +98,5 @@ export function useUrbanInsights(): UrbanInsights {
       serviceDistances,
       walkabilityScore,
     };
-  }, [getStreetUsage, getStreetUsageMax, getAverageDistancesByLandUse, enabledLandUses, topStreetsRange, refreshTick]);
+  }, [getStreetUsage, getStreetUsageMax, getAverageDistancesByLandUse, enabledLandUses, topStreetsRange]);
 }

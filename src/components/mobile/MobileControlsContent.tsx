@@ -1,19 +1,27 @@
-import { PlaybackControls } from '@/components/panels/PlaybackControls';
-import { SimulationParams } from '@/components/panels/SimulationParams';
 import { LandUseToggles } from '@/components/panels/LandUseToggles';
 import { VisualizationToggles } from '@/components/panels/VisualizationToggles';
 import { StatsDisplay } from '@/components/panels/StatsDisplay';
+import { CalculateButton } from '@/components/panels/CalculateButton';
+import { TransportModeSelector } from '@/components/panels/TransportModeSelector';
 
 export function MobileControlsContent() {
   return (
     <div className="p-4 space-y-4">
-      {/* Playback */}
+      {/* Flow Statistics */}
       <section>
         <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
-          Playback
+          Flow Statistics
         </h3>
-        <PlaybackControls />
-        <div className="mt-3">
+        <div className="space-y-3">
+          <div>
+            <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Transport Mode</span>
+            <div className="mt-1.5">
+              <TransportModeSelector />
+            </div>
+          </div>
+          <CalculateButton />
+        </div>
+        <div className="mt-3 pt-3 border-t border-border">
           <StatsDisplay />
         </div>
       </section>
@@ -24,14 +32,6 @@ export function MobileControlsContent() {
           Display
         </h3>
         <VisualizationToggles />
-      </section>
-
-      {/* Parameters */}
-      <section>
-        <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
-          Parameters
-        </h3>
-        <SimulationParams />
       </section>
 
       {/* Land Use Filters */}

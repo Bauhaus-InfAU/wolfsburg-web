@@ -1,4 +1,4 @@
-import type { Building, ODEntry, LandUse } from '../config/types';
+import type { Building, ODEntry, LandUse, TransportMode } from '../config/types';
 import { createLandUseDecay } from './distanceDecay';
 import { MIN_OD_WEIGHT } from '../config/constants';
 import { haversineDistance } from '../data/streetGraph';
@@ -13,11 +13,13 @@ export class ODMatrix {
    * @param origins - Residential buildings (trip origins)
    * @param destinations - Non-residential buildings (trip destinations)
    * @param enabledLandUses - Set of enabled land use types
+   * @param transportMode - Transport mode for decay calculations (default: pedestrian)
    */
   calculate(
     origins: Building[],
     destinations: Building[],
-    enabledLandUses: Set<LandUse>
+    enabledLandUses: Set<LandUse>,
+    transportMode: TransportMode = 'pedestrian'
   ): void {
     this.matrix.clear();
 
@@ -37,7 +39,7 @@ export class ODMatrix {
         const primaryLandUse = this.getPrimaryLandUse(dest, enabledLandUses);
 
         // Apply land-use-specific distance decay (MiD calibrated)
-        const decayFn = createLandUseDecay(primaryLandUse);
+        const decayFn = createLandUseDecay(primaryLandUse, transportMode);
         const decay = decayFn(distance);
         if (decay <= 0) continue;
 
@@ -151,6 +153,14 @@ export class ODMatrix {
   hasDestinations(originId: string): boolean {
     const entries = this.matrix.get(originId);
     return entries !== undefined && entries.length > 0;
+  }
+
+  /**
+   * Get all O-D entries for an origin.
+   * Used by FlowCalculator to compute expected trip distribution.
+   */
+  getEntries(originId: string): ODEntry[] | undefined {
+    return this.matrix.get(originId);
   }
 
   /**
