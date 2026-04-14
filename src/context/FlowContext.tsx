@@ -3,7 +3,7 @@ import type { LandUse, BuildingCollection, StreetCollection, Path, Building, Tra
 import { DESTINATION_LAND_USES } from '../config/constants';
 import { FlowCalculator, type FlowResult } from '../simulation/FlowCalculator';
 import { FlowCalculatorParallel } from '../simulation/FlowCalculatorParallel';
-import { BuildingStore } from '../data/BuildingStore';
+import { BuildingStore } from '../data/buildingStore';
 import { StreetGraph } from '../data/streetGraph';
 import { MapLibreView } from '../visualization/MapLibreView';
 import { loadBuildings, loadStreets, loadBlocks, type BlockCollection } from '../data/dataLoader';
