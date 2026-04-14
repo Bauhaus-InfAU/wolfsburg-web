@@ -1,7 +1,7 @@
 import type { TransitStop, TransitDeparture } from '../config/types';
 
-// VBN (Verkehrsverbund Bremen/Niedersachsen) transport.rest API — covers Wolfsburg area, free, no API key
-const VBN_API = 'https://v5.vbn.transport.rest';
+// Deutsche Bahn v6 transport.rest API — covers all of Germany including Wolfsburg, free, no API key
+const DB_API = 'https://v6.db.transport.rest';
 
 // Nominatim (OpenStreetMap) geocoding — free, no API key
 const NOMINATIM_API = 'https://nominatim.openstreetmap.org';
@@ -23,7 +23,6 @@ export async function geocodeAddress(address: string): Promise<[number, number] 
   const res = await fetch(url, {
     headers: {
       'Accept-Language': 'de',
-      // Nominatim policy requires a descriptive User-Agent
       'User-Agent': 'WolfsburgFlowModel/1.0 (educational project)',
     },
   });
@@ -38,7 +37,7 @@ export async function geocodeAddress(address: string): Promise<[number, number] 
 
 /**
  * Fetch transit stops near a coordinate within a given radius.
- * Uses VBN transport.rest /stops/nearby endpoint.
+ * Uses DB transport.rest /locations/nearby endpoint.
  */
 export async function getNearbyStops(
   lat: number,
@@ -46,7 +45,7 @@ export async function getNearbyStops(
   radiusMeters: number
 ): Promise<TransitStop[]> {
   const url =
-    `${VBN_API}/stops/nearby?` +
+    `${DB_API}/locations/nearby?` +
     new URLSearchParams({
       latitude: String(lat),
       longitude: String(lng),
@@ -56,7 +55,7 @@ export async function getNearbyStops(
     });
 
   const res = await fetch(url);
-  if (!res.ok) throw new Error(`VBN API error: ${res.status}`);
+  if (!res.ok) throw new Error(`DB API error: ${res.status}`);
 
   const data = await res.json();
   if (!Array.isArray(data)) return [];
@@ -77,11 +76,11 @@ export async function getNearbyStops(
 
 /**
  * Fetch departures for a stop in the next 15 minutes.
- * Uses VBN transport.rest /stops/{id}/departures endpoint.
+ * Uses DB transport.rest /stops/{id}/departures endpoint.
  */
 export async function getDepartures(stopId: string): Promise<TransitDeparture[]> {
   const url =
-    `${VBN_API}/stops/${encodeURIComponent(stopId)}/departures?` +
+    `${DB_API}/stops/${encodeURIComponent(stopId)}/departures?` +
     new URLSearchParams({
       when: new Date().toISOString(),
       duration: '15',
@@ -90,7 +89,7 @@ export async function getDepartures(stopId: string): Promise<TransitDeparture[]>
     });
 
   const res = await fetch(url);
-  if (!res.ok) throw new Error(`VBN departures error: ${res.status}`);
+  if (!res.ok) throw new Error(`DB departures error: ${res.status}`);
 
   const data = await res.json();
   const list: unknown[] = Array.isArray(data) ? data : (data?.departures ?? []);
@@ -104,7 +103,12 @@ export async function getDepartures(stopId: string): Promise<TransitDeparture[]>
       when: String(dep.when ?? dep.plannedWhen ?? ''),
       plannedWhen: String(dep.plannedWhen ?? ''),
       delay: typeof dep.delay === 'number' ? dep.delay : null,
-      platform: dep.platform != null ? String(dep.platform) : (dep.plannedPlatform != null ? String(dep.plannedPlatform) : null),
+      platform:
+        dep.platform != null
+          ? String(dep.platform)
+          : dep.plannedPlatform != null
+          ? String(dep.plannedPlatform)
+          : null,
     };
   });
 }
