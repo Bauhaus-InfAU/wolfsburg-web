@@ -55,6 +55,17 @@ export function App() {
 
       <LoadingOverlay />
       <CursorOverlay />
+
+      {/* Warning banner */}
+      <div className="fixed top-3 left-1/2 -translate-x-1/2 z-50 pointer-events-none select-none">
+        <div className="flex items-center gap-2 px-3 py-1.5 rounded border border-yellow-400/60 bg-yellow-300/10 backdrop-blur-sm text-yellow-500 font-mono text-xs tracking-widest uppercase shadow-lg">
+          <span className="animate-pulse text-base">⚠️</span>
+          <span className="font-semibold">Warning</span>
+          <span className="text-yellow-400/60">·</span>
+          <span>Ongoing Experiment</span>
+          <span className="animate-pulse text-base">🧪</span>
+        </div>
+      </div>
     </div>
   );
 }
