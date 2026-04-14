@@ -1,93 +1,170 @@
-/**
- * Iconic landmark buildings in Wolfsburg with their map coordinates.
- * Coordinates sourced from wolfsburg-poi.geojson.
- *
- * Photos: place images at /public/images/landmarks/<id>.jpg
- * Suggested sources (Wikimedia Commons, CC-licensed):
- *   phaeno        — search "Phaeno Wolfsburg" on commons.wikimedia.org
- *   aalto-kulturhaus — search "Kulturhaus Wolfsburg Aalto"
- *   autostadt     — search "Autostadt Wolfsburg"
- */
+// Curated landmark locations for Wolfsburg
+// Coordinates in WGS84 [lng, lat]
 
 export interface Landmark {
   id: string;
   name: string;
+  shortName: string;       // used on the map pin label
+  category: string;
   description: string;
-  architect: string;
-  year: number;
-  coordinates: [number, number]; // [lng, lat] WGS84
-  iconSvg: string;               // Inline SVG path content
-  category: 'museum' | 'culture' | 'automotive';
-  /** Accent color used for the photo fallback card */
-  accentColor: string;
-  /** Path relative to /public — place your photo here */
-  photoUrl: string;
+  coordinates: [number, number];
+  details: { label: string; value: string }[];
+  // Optional metadata used by BuildingInfo photo card
+  architect?: string;
+  year?: number;
+  photoUrl?: string;
 }
-
-// SVG icon paths for each category
-const ICONS = {
-  museum: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M2 20h20"/>
-    <path d="M12 2L2 7h20L12 2z"/>
-    <rect x="4" y="7" width="4" height="13"/>
-    <rect x="10" y="7" width="4" height="13"/>
-    <rect x="16" y="7" width="4" height="13"/>
-  </svg>`,
-
-  culture: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <circle cx="9" cy="9" r="3"/>
-    <circle cx="15" cy="9" r="3"/>
-    <path d="M6 18c0-2 1.5-4 3-4h6c1.5 0 3 2 3 4"/>
-    <path d="M4 6c0-1 .5-2 2-2s2 1 2 2"/>
-    <path d="M16 6c0-1 .5-2 2-2s2 1 2 2"/>
-  </svg>`,
-
-  automotive: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M5 17H3a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h2l3-3h8l3 3h2a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2h-2"/>
-    <circle cx="7" cy="17" r="2"/>
-    <circle cx="17" cy="17" r="2"/>
-    <path d="M9 17h6"/>
-  </svg>`,
-};
 
 export const WOLFSBURG_LANDMARKS: Landmark[] = [
   {
-    id: 'phaeno',
-    name: 'phaeno',
-    description: 'A gravity-defying science centre that floats above the ground on ten concrete cones.',
-    architect: 'Zaha Hadid',
-    year: 2005,
-    coordinates: [10.790576, 52.428716],
-    iconSvg: ICONS.museum,
-    category: 'museum',
-    accentColor: '#f57f5b',
-    photoUrl: '/images/landmarks/phaeno.jpg',
+    id: 'vw-plant',
+    name: 'Volkswagen Plant',
+    shortName: 'VW Plant',
+    category: 'Industry',
+    description: 'One of the largest car manufacturing plants in the world, producing over 1,500 vehicles per day. The factory spans ~6.5 km² and employs around 65,000 people.',
+    coordinates: [10.7796, 52.4338],
+    details: [
+      { label: 'Founded', value: '1938' },
+      { label: 'Area', value: '6.5 km²' },
+      { label: 'Employees', value: '~65,000' },
+      { label: 'Daily output', value: '~1,500 cars' },
+    ],
+    year: 1938,
+    photoUrl: '/images/landmarks/vw-plant.jpg',
   },
   {
-    id: 'aalto-kulturhaus',
-    name: 'Aalto-Kulturhaus',
-    description: 'A cultural centre designed with flowing organic forms and humanist warmth.',
-    architect: 'Alvar Aalto',
-    year: 1962,
-    coordinates: [10.785542, 52.419512],
-    iconSvg: ICONS.culture,
-    category: 'culture',
-    accentColor: '#5b9bd5',
-    photoUrl: '/images/landmarks/aalto-kulturhaus.jpg',
+    id: 'vw-konzernzentrale',
+    name: 'Volkswagen Headquarters',
+    shortName: 'VW HQ',
+    category: 'Corporate',
+    description: 'The iconic glass tower serves as the administrative headquarters of the Volkswagen Group, one of the world\'s largest automotive companies.',
+    coordinates: [10.768331, 52.42948],
+    details: [
+      { label: 'Built', value: '1938 / renovated 1990s' },
+      { label: 'Employees worldwide', value: '~675,000' },
+      { label: 'Brands', value: '12 (VW, Audi, Porsche…)' },
+    ],
+    year: 1938,
+    photoUrl: '/images/landmarks/vw-hq.jpg',
   },
   {
     id: 'autostadt',
     name: 'Autostadt',
-    description: "Volkswagen's landmark automotive theme park beside the main factory canal.",
+    shortName: 'Autostadt',
+    category: 'Attraction',
+    description: 'Volkswagen\'s flagship brand experience park on the Mittellandkanal, featuring pavilions for each VW Group brand, car towers, and a customer delivery centre.',
+    coordinates: [10.7942009, 52.4326641],
     architect: 'Various (Henn, others)',
     year: 2000,
-    coordinates: [10.7942009, 52.4326641],
-    iconSvg: ICONS.automotive,
-    category: 'automotive',
-    accentColor: '#4a90a4',
+    details: [
+      { label: 'Opened', value: '2000' },
+      { label: 'Area', value: '28 ha' },
+      { label: 'Annual visitors', value: '~1 million' },
+      { label: 'Car towers', value: '2 × 48 m' },
+    ],
     photoUrl: '/images/landmarks/autostadt.jpg',
   },
+  {
+    id: 'phaeno',
+    name: 'phaeno Science Center',
+    shortName: 'phaeno',
+    category: 'Culture',
+    description: 'An award-winning science museum designed by Zaha Hadid (2005), one of the largest deconstructivist buildings in Germany. Hosts 300+ interactive experiments.',
+    coordinates: [10.7900025, 52.428272],
+    architect: 'Zaha Hadid',
+    year: 2005,
+    details: [
+      { label: 'Architect', value: 'Zaha Hadid' },
+      { label: 'Opened', value: '2005' },
+      { label: 'Experiments', value: '300+' },
+      { label: 'Prize', value: 'Stirling Prize 2006' },
+    ],
+    photoUrl: '/images/landmarks/phaeno.jpg',
+  },
+  {
+    id: 'volkswagen-arena',
+    name: 'Volkswagen Arena',
+    shortName: 'VW Arena',
+    category: 'Sport',
+    description: 'Home stadium of VfL Wolfsburg, the Bundesliga football club founded by Volkswagen workers. The 30,000-seat arena also hosts major concerts and events.',
+    coordinates: [10.803889, 52.4326521],
+    year: 2002,
+    details: [
+      { label: 'Opened', value: '2002' },
+      { label: 'Capacity', value: '30,000' },
+      { label: 'Club', value: 'VfL Wolfsburg' },
+      { label: 'Title', value: 'Bundesliga Champions 2009' },
+    ],
+    photoUrl: '/images/landmarks/vw-arena.jpg',
+  },
+  {
+    id: 'automuseum',
+    name: 'AutoMuseum Volkswagen',
+    shortName: 'AutoMuseum',
+    category: 'Museum',
+    description: 'Chronicles the 85-year history of Volkswagen with over 200 historic vehicles, from the original Beetle prototypes to modern concept cars.',
+    coordinates: [10.80861381106002, 52.427771129728164],
+    year: 1985,
+    details: [
+      { label: 'Vehicles', value: '200+' },
+      { label: 'Founded', value: '1985' },
+      { label: 'Area', value: '3,500 m²' },
+    ],
+    photoUrl: '/images/landmarks/automuseum.jpg',
+  },
+  {
+    id: 'allerpark',
+    name: 'Allerpark',
+    shortName: 'Allerpark',
+    category: 'Recreation',
+    description: 'A large waterfront leisure park along the Aller river, offering beaches, water sports, playgrounds, and extensive green space — Wolfsburg\'s main recreational destination.',
+    coordinates: [10.8161366, 52.4353797],
+    details: [
+      { label: 'Area', value: '~200 ha' },
+      { label: 'Lake', value: 'Allersee' },
+      { label: 'Features', value: 'Beach, water sports, trails' },
+    ],
+    photoUrl: '/images/landmarks/allerpark.jpg',
+  },
+  {
+    id: 'planetarium',
+    name: 'Planetarium Wolfsburg',
+    shortName: 'Planetarium',
+    category: 'Culture',
+    description: 'A public planetarium and astronomy centre offering star shows, space exhibitions, and educational programmes for all ages.',
+    coordinates: [10.7819169, 52.4170989],
+    details: [
+      { label: 'Dome diameter', value: '15 m' },
+      { label: 'Seats', value: '100' },
+    ],
+    photoUrl: '/images/landmarks/planetarium.jpg',
+  },
+  {
+    id: 'designer-outlets',
+    name: 'Designer Outlets Wolfsburg',
+    shortName: 'Outlets',
+    category: 'Retail',
+    description: 'One of Germany\'s premier outlet centres, located adjacent to the Autostadt with 80+ international brand stores in a purpose-built canal-side setting.',
+    coordinates: [10.7929257, 52.4287759],
+    details: [
+      { label: 'Stores', value: '80+' },
+      { label: 'Location', value: 'Next to Autostadt' },
+    ],
+    photoUrl: '/images/landmarks/designer-outlets.jpg',
+  },
 ];
+
+// Category colour mapping (matches app accent palette)
+export const LANDMARK_CATEGORY_COLORS: Record<string, string> = {
+  Industry:    '#8aaccc',
+  Corporate:   '#98a8b8',
+  Attraction:  '#f57f5b',
+  Culture:     '#7ab8c8',
+  Sport:       '#98c878',
+  Museum:      '#e8c468',
+  Recreation:  '#7cb89a',
+  Retail:      '#e8a668',
+};
 
 /** Haversine distance in metres between two WGS84 points */
 export function haversineMetres(

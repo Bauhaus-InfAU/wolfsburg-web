@@ -6,6 +6,7 @@ import { LAND_USE_COLORS } from '../config/constants';
 import { getCityConfig } from '../config/cityConfig';
 import type { HeatmapGradient } from '../config/gradientPresets';
 import type { Landmark } from '../config/landmarks';
+import { LANDMARK_CATEGORY_COLORS } from '../config/landmarks';
 
 // Natural element categories from blocks tn__bez field
 const WATER_TYPES = [
@@ -29,6 +30,49 @@ const GREEN_SPACE_TYPES = [
   'Landwirtschaft, Grünland',                                    // Grassland
 ];
 
+// All publicly accessible open space types from blocks data
+const OPEN_SPACE_TYPES = [
+  // Public squares and plazas
+  'Platz',
+  'Platz, Festplatz',
+  'Platz, Marktplatz',
+  // Parks, recreation and leisure
+  'Sport-, Freizeit- und Erholungsfläche, Park',
+  'Sport-, Freizeit- und Erholungsfläche, Erholungsfläche',
+  'Sport-, Freizeit- und Erholungsfläche, Siedlungsgrünfläche',
+  'Sport-, Freizeit- und Erholungsfläche, Kleingarten',
+  'Sport-, Freizeit- und Erholungsfläche, Spielplatz, Bolzplatz',
+  'Sport-, Freizeit- und Erholungsfläche, Sportanlage',
+  'Sport-, Freizeit- und Erholungsfläche, Campingplatz',
+  'Sport-, Freizeit- und Erholungsfläche, Schwimmen',
+  // Pedestrian zones
+  'Strassenverkehr, Fußgängerzone',
+  // Cemeteries
+  'Friedhof',
+];
+
+// Map colors for each theme
+const MAP_COLORS = {
+  light: {
+    background: '#fafafa',
+    streetBase: '#ffffff',
+    streetShadow: 'rgba(0,0,0,0.06)',
+    water: '#a8d4e6',
+    vegetation: '#8fbc8f',
+    greenSpace: '#c8e6c9',
+    buildingOutline: 'rgba(0,0,0,0.18)',
+  },
+  dark: {
+    background: '#1a1a1a',
+    streetBase: '#c8bfa8',
+    streetShadow: 'rgba(0,0,0,0.5)',
+    water: '#1e4a6e',
+    vegetation: '#213d21',
+    greenSpace: '#1a3020',
+    buildingOutline: 'rgba(255,255,255,0.22)',
+  },
+} as const;
+
 /**
  * MapLibre GL JS wrapper for WebGL-accelerated map rendering.
  * Replaces Canvas 2D MapView for better pan/zoom performance.
@@ -44,6 +88,12 @@ export class MapLibreView {
   // Callbacks
   public onViewChange: (() => void) | null = null;
   public onBuildingClick: ((buildingId: string, coordinates: [number, number]) => void) | null = null;
+  public onSegmentClick: ((fid: string) => void) | null = null;
+  public onAddSegment: ((from: [number, number], to: [number, number]) => void) | null = null;
+  public onLandmarkClick: ((landmarkId: string) => void) | null = null;
+
+  private editMode: 'none' | 'remove' | 'add' = 'none';
+  private addSegmentStart: [number, number] | null = null;
 
   constructor(containerId: string) {
     this.container = document.getElementById(containerId)!;
@@ -122,10 +172,31 @@ export class MapLibreView {
 
     // Cursor feedback on building hover
     this.map.on('mouseenter', 'buildings-fill', () => {
-      this.map.getCanvas().style.cursor = 'pointer';
+      if (this.editMode === 'none') this.map.getCanvas().style.cursor = 'pointer';
     });
     this.map.on('mouseleave', 'buildings-fill', () => {
-      this.map.getCanvas().style.cursor = '';
+      if (this.editMode === 'none') this.map.getCanvas().style.cursor = '';
+    });
+
+    // Street segment click — used in 'remove' edit mode
+    this.map.on('click', 'street-base', (e) => {
+      if (this.editMode !== 'remove') return;
+      if (!e.features || e.features.length === 0) return;
+      const props = e.features[0].properties as Record<string, unknown>;
+      const fid = String(props?.fid ?? props?.id ?? '');
+      if (fid && this.onSegmentClick) this.onSegmentClick(fid);
+    });
+
+    // Map click — used in 'add' edit mode to draw new segments
+    this.map.on('click', (e) => {
+      if (this.editMode !== 'add') return;
+      const pt: [number, number] = [e.lngLat.lng, e.lngLat.lat];
+      if (!this.addSegmentStart) {
+        this.addSegmentStart = pt;
+      } else {
+        if (this.onAddSegment) this.onAddSegment(this.addSegmentStart, pt);
+        this.addSegmentStart = null;
+      }
     });
   }
 
@@ -827,10 +898,10 @@ export class MapLibreView {
   }
 
   /**
-   * Add HTML marker pins for iconic landmark buildings.
-   * Each marker shows a category icon and a name label.
+   * Add HTML marker pins for landmark locations.
+   * Each marker shows a coloured dot and a short name label.
    */
-  addLandmarkMarkers(landmarks: Landmark[]): void {
+  addLandmarksLayer(landmarks: Landmark[]): void {
     // Remove any existing markers first
     for (const marker of this.landmarkMarkers) {
       marker.remove();
@@ -838,10 +909,12 @@ export class MapLibreView {
     this.landmarkMarkers = [];
 
     for (const landmark of landmarks) {
+      const accent = LANDMARK_CATEGORY_COLORS[landmark.category] ?? '#f57f5b';
+
       const el = document.createElement('div');
       el.className = 'lm-marker';
       el.title = `${landmark.name} — ${landmark.description}`;
-      el.style.setProperty('--lm-accent', landmark.accentColor);
+      el.style.setProperty('--lm-accent', accent);
       el.style.cursor = 'pointer';
       el.style.pointerEvents = 'auto';
 
@@ -851,28 +924,20 @@ export class MapLibreView {
             <span class="lm-ring" style="animation-delay:0s"></span>
             <span class="lm-ring" style="animation-delay:0.85s"></span>
             <span class="lm-ring" style="animation-delay:1.7s"></span>
-            <div class="lm-icon">${landmark.iconSvg}</div>
+            <div class="lm-icon" style="font-size:11px;font-weight:700;color:${accent}">${landmark.shortName.charAt(0)}</div>
           </div>
           <div class="lm-tip"></div>
           <div class="lm-label">
-            <span class="lm-dot"></span>${landmark.name}
+            <span class="lm-dot"></span>${landmark.shortName}
           </div>
         </div>
       `;
 
-      // Clicking a landmark pin opens its building info card
+      // Clicking a landmark pin fires the landmark click callback
       el.addEventListener('click', (e) => {
         e.stopPropagation();
-        if (!this.onBuildingClick) return;
-        const pt = this.map.project(landmark.coordinates as maplibregl.LngLatLike);
-        const r = 40;
-        const hits = this.map.queryRenderedFeatures(
-          [[pt.x - r, pt.y - r], [pt.x + r, pt.y + r]],
-          { layers: ['buildings-fill'] }
-        );
-        if (hits.length > 0) {
-          const bid = hits[0].properties?.['Building ID'];
-          if (bid) this.onBuildingClick(bid, landmark.coordinates);
+        if (this.onLandmarkClick) {
+          this.onLandmarkClick(landmark.id);
         }
       });
 
@@ -882,6 +947,172 @@ export class MapLibreView {
 
       this.landmarkMarkers.push(marker);
     }
+  }
+
+  /**
+   * Switch between dark and light map themes.
+   */
+  setDarkMode(dark: boolean): void {
+    const colors = dark ? MAP_COLORS.dark : MAP_COLORS.light;
+
+    if (this.map.getLayer('background')) {
+      this.map.setPaintProperty('background', 'background-color', colors.background);
+    }
+    if (this.map.getLayer('street-base')) {
+      this.map.setPaintProperty('street-base', 'line-color', colors.streetBase);
+    }
+    if (this.map.getLayer('street-shadow')) {
+      this.map.setPaintProperty('street-shadow', 'line-color', colors.streetShadow);
+    }
+    if (this.map.getLayer('water-fill')) {
+      this.map.setPaintProperty('water-fill', 'fill-color', colors.water);
+    }
+    if (this.map.getLayer('vegetation-fill')) {
+      this.map.setPaintProperty('vegetation-fill', 'fill-color', colors.vegetation);
+    }
+    if (this.map.getLayer('green-space-fill')) {
+      this.map.setPaintProperty('green-space-fill', 'fill-color', colors.greenSpace);
+    }
+    if (this.map.getLayer('open-spaces-fill')) {
+      this.map.setPaintProperty('open-spaces-fill', 'fill-color', colors.greenSpace);
+    }
+  }
+
+  /**
+   * Add sources and layers for disabled-streets and added-streets overlays.
+   * Both start empty and are updated via updateDisabledStreets / updateAddedStreets.
+   */
+  addDisabledStreetsLayer(): void {
+    this.map.addSource('disabled-streets', {
+      type: 'geojson',
+      data: { type: 'FeatureCollection', features: [] },
+    });
+    this.map.addLayer({
+      id: 'disabled-streets',
+      type: 'line',
+      source: 'disabled-streets',
+      layout: { 'line-cap': 'round', 'line-join': 'round' },
+      paint: {
+        'line-color': '#ff4444',
+        'line-width': 4,
+        'line-opacity': 0.85,
+        'line-dasharray': [2, 2],
+      },
+    });
+
+    this.map.addSource('added-streets', {
+      type: 'geojson',
+      data: { type: 'FeatureCollection', features: [] },
+    });
+    this.map.addLayer({
+      id: 'added-streets',
+      type: 'line',
+      source: 'added-streets',
+      layout: { 'line-cap': 'round', 'line-join': 'round' },
+      paint: {
+        'line-color': '#44cc44',
+        'line-width': 4,
+        'line-opacity': 0.85,
+        'line-dasharray': [4, 2],
+      },
+    });
+  }
+
+  /**
+   * Add open/public spaces layer from blocks GeoJSON.
+   * Renders on top of buildings so outlines stay visible.
+   */
+  addOpenSpacesLayer(blockData: BlockCollection): void {
+    const openSpaceFeatures = blockData.features.filter(
+      f => f.properties.tn__bez && OPEN_SPACE_TYPES.includes(f.properties.tn__bez)
+    );
+
+    if (openSpaceFeatures.length === 0) return;
+
+    this.map.addSource('open-spaces', {
+      type: 'geojson',
+      data: { type: 'FeatureCollection', features: openSpaceFeatures },
+    });
+
+    this.map.addLayer({
+      id: 'open-spaces-fill',
+      type: 'fill',
+      source: 'open-spaces',
+      layout: { 'visibility': 'none' },
+      paint: {
+        'fill-color': '#a8d8a8',
+        'fill-opacity': 0.35,
+      },
+    });
+
+    this.map.addLayer({
+      id: 'open-spaces-outline',
+      type: 'line',
+      source: 'open-spaces',
+      layout: { 'visibility': 'none' },
+      paint: {
+        'line-color': '#5aaa5a',
+        'line-width': 1.5,
+        'line-opacity': 0.7,
+      },
+    });
+  }
+
+  /**
+   * Show or hide the open spaces layer.
+   */
+  setOpenSpacesVisibility(visible: boolean): void {
+    const v = visible ? 'visible' : 'none';
+    if (this.map.getLayer('open-spaces-fill')) {
+      this.map.setLayoutProperty('open-spaces-fill', 'visibility', v);
+    }
+    if (this.map.getLayer('open-spaces-outline')) {
+      this.map.setLayoutProperty('open-spaces-outline', 'visibility', v);
+    }
+  }
+
+  /**
+   * Update the disabled streets overlay with the current set of removed segments.
+   */
+  updateDisabledStreets(streets: { fid: string; coordinates: [number, number][] }[]): void {
+    const source = this.map.getSource('disabled-streets');
+    if (!source || source.type !== 'geojson') return;
+    (source as maplibregl.GeoJSONSource).setData({
+      type: 'FeatureCollection',
+      features: streets.map(s => ({
+        type: 'Feature' as const,
+        geometry: { type: 'LineString' as const, coordinates: s.coordinates },
+        properties: { fid: s.fid },
+      })),
+    });
+  }
+
+  /**
+   * Update the added streets overlay with the current set of user-drawn segments.
+   */
+  updateAddedStreets(streets: { from: [number, number]; to: [number, number] }[]): void {
+    const source = this.map.getSource('added-streets');
+    if (!source || source.type !== 'geojson') return;
+    (source as maplibregl.GeoJSONSource).setData({
+      type: 'FeatureCollection',
+      features: streets.map(s => ({
+        type: 'Feature' as const,
+        geometry: { type: 'LineString' as const, coordinates: [s.from, s.to] },
+        properties: {},
+      })),
+    });
+  }
+
+  /**
+   * Set the map editing mode.
+   * 'remove' — clicking a street segment calls onSegmentClick.
+   * 'add'    — two map clicks call onAddSegment(from, to).
+   * 'none'   — normal interaction.
+   */
+  setEditMode(mode: 'none' | 'remove' | 'add'): void {
+    this.editMode = mode;
+    this.addSegmentStart = null;
+    this.map.getCanvas().style.cursor = mode !== 'none' ? 'crosshair' : '';
   }
 
   /**
