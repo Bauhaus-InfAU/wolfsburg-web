@@ -215,8 +215,8 @@
   z-index: 1;
 }
 .lm-icon svg {
-  width: 22px;
-  height: 22px;
+  width: 16px;
+  height: 16px;
 }
 
 /* Downward-pointing triangular tip */
@@ -306,8 +306,8 @@
 }
 
 :root:not(.dark) .lm-icon svg {
-  width: 18px;
-  height: 18px;
+  width: 14px;
+  height: 14px;
 }
 
 :root:not(.dark) .lm-ring {
