@@ -11,6 +11,7 @@ import { SegmentEditor } from './SegmentEditor';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { PublicTransportPanel } from './PublicTransportPanel';
 import { LiveTrafficPanel } from './LiveTrafficPanel';
+import { SunPathContent } from '@/components/sunpath/SunPathPanel';
 
 const MIN_WIDTH = 300;
 const MAX_WIDTH = 500;
@@ -117,6 +118,11 @@ export function ControlPanel() {
             {/* Public Transport */}
             <CollapsibleSection title="Public Transport" defaultOpen={false}>
               <PublicTransportPanel />
+            </CollapsibleSection>
+
+            {/* Sun Path */}
+            <CollapsibleSection title="Sun Path" defaultOpen={false}>
+              <SunPathContent />
             </CollapsibleSection>
           </div>
 

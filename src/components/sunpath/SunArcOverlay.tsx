@@ -37,9 +37,9 @@ export function SunArcOverlay() {
   const lat = cfg.center[1];
   const lng = cfg.center[0];
 
-  // Full-day arc (every 5 min), memoised on date
+  // Full-day arc (every 2 min for smoother curve), memoised on date
   const arc = useMemo(
-    () => getSunArc(currentDate, lat, lng, 5),
+    () => getSunArc(currentDate, lat, lng, 2),
     [currentDate, lat, lng],
   );
 
@@ -70,12 +70,13 @@ export function SunArcOverlay() {
 
   if (!showSunPath) return null;
 
-  // Build SVG path for above-horizon portion of the arc
+  // Build SVG path for above-horizon portion of the arc.
+  // Use -0.5° threshold to avoid flickering near the exact horizon crossing.
   const pathParts: string[] = [];
   let cmd = 'M';
   for (const p of arc) {
-    if (p.elevation < 0) { cmd = 'M'; continue; }
-    const [x, y] = toXY(p.azimuth, p.elevation);
+    if (p.elevation < -0.5) { cmd = 'M'; continue; }
+    const [x, y] = toXY(p.azimuth, Math.max(0, p.elevation));
     pathParts.push(`${cmd}${x.toFixed(1)},${y.toFixed(1)}`);
     cmd = 'L';
   }
@@ -90,6 +91,12 @@ export function SunArcOverlay() {
     <div className="absolute top-4 right-4 z-20 pointer-events-none select-none">
       <div className="bg-card/80 backdrop-blur-sm rounded-xl border border-border shadow-lg p-1">
         <svg width={SVG_W} height={SVG_H} viewBox={`0 0 ${SVG_W} ${SVG_H}`}>
+          <defs>
+            {/* Clip arc and hour ticks to the inside of the horizon circle */}
+            <clipPath id="sunpath-horizon-clip">
+              <circle cx={CX} cy={CY} r={R} />
+            </clipPath>
+          </defs>
 
           {/* Altitude rings at 30° and 60° */}
           {[30, 60].map(e => (
@@ -142,7 +149,7 @@ export function SunArcOverlay() {
             );
           })}
 
-          {/* Sun arc (above horizon) */}
+          {/* Sun arc (above horizon) — clipped to horizon circle */}
           {arcPath && (
             <path
               d={arcPath}
@@ -152,24 +159,27 @@ export function SunArcOverlay() {
               strokeLinecap="round"
               strokeLinejoin="round"
               opacity={0.85}
+              clipPath="url(#sunpath-horizon-clip)"
             />
           )}
 
-          {/* Hour tick dots + labels */}
-          {hourTicks.map(({ x, y, label }) => (
-            <g key={label}>
-              <circle cx={x} cy={y} r={1.8} fill="#f97316" opacity={0.65} />
-              <text
-                x={x + 4} y={y - 3}
-                fontSize={6}
-                fill="#f97316"
-                opacity={0.75}
-                fontFamily="monospace"
-              >
-                {label}h
-              </text>
-            </g>
-          ))}
+          {/* Hour tick dots + labels — clipped to horizon circle */}
+          <g clipPath="url(#sunpath-horizon-clip)">
+            {hourTicks.map(({ x, y, label }) => (
+              <g key={label}>
+                <circle cx={x} cy={y} r={1.8} fill="#f97316" opacity={0.65} />
+                <text
+                  x={x + 4} y={y - 3}
+                  fontSize={6}
+                  fill="#f97316"
+                  opacity={0.75}
+                  fontFamily="monospace"
+                >
+                  {label}h
+                </text>
+              </g>
+            ))}
+          </g>
 
           {/* Current sun position */}
           {sx != null && sy != null && (
