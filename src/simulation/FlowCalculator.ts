@@ -1,5 +1,5 @@
 import type { Building, LandUse, TransportMode } from '../config/types';
-import { BuildingStore } from '../data/BuildingStore';
+import { BuildingStore } from '../data/buildingStore';
 import { StreetGraph } from '../data/streetGraph';
 import { StreetUsageTracker, type SegmentUsage } from '../data/StreetUsageTracker';
 import { ODMatrix } from './odMatrix';

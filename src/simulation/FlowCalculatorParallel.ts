@@ -1,5 +1,5 @@
 import type { Building, LandUse, GraphEdge, TransportMode } from '../config/types';
-import type { BuildingStore } from '../data/BuildingStore';
+import type { BuildingStore } from '../data/buildingStore';
 import type { StreetGraph } from '../data/streetGraph';
 import type { SegmentUsage } from '../data/StreetUsageTracker';
 import type { GraphPartitioner } from '../data/partition/GraphPartitioner';

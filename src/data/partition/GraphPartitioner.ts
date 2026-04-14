@@ -1,5 +1,5 @@
 import type { StreetGraph } from '../streetGraph';
-import type { BuildingStore } from '../BuildingStore';
+import type { BuildingStore } from '../buildingStore';
 import type {
   GridCell,
   PartitionedGraph,
