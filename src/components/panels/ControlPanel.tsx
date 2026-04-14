@@ -7,6 +7,7 @@ import { VisualizationToggles } from './VisualizationToggles';
 import { StatsDisplay } from './StatsDisplay';
 import { CalculateButton } from './CalculateButton';
 import { TransportModeSelector } from './TransportModeSelector';
+import { SegmentEditor } from './SegmentEditor';
 
 const MIN_WIDTH = 300;
 const MAX_WIDTH = 500;
@@ -89,6 +90,11 @@ export function ControlPanel() {
             {/* Display Options */}
             <CollapsibleSection title="Display Options" defaultOpen>
               <VisualizationToggles />
+            </CollapsibleSection>
+
+            {/* Street Segment Editor */}
+            <CollapsibleSection title="Street Segments" defaultOpen={false}>
+              <SegmentEditor />
             </CollapsibleSection>
 
             {/* Land Use Filters */}
