@@ -139,6 +139,25 @@ export interface SpatialItem {
   id: string;
 }
 
+// Public transit types
+export interface TransitStop {
+  id: string;
+  name: string;
+  lat: number;
+  lng: number;
+  distance?: number; // meters from search point
+  departures?: TransitDeparture[];
+}
+
+export interface TransitDeparture {
+  line: string;
+  direction: string;
+  when: string; // ISO date string (actual departure, includes delay)
+  plannedWhen: string; // ISO date string (scheduled)
+  delay: number | null; // seconds
+  platform?: string | null;
+}
+
 // Re-export partition types for convenience
 export type {
   GridCell,
