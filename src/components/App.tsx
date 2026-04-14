@@ -15,6 +15,7 @@ import { DrawingToolbox } from './drawing/DrawingToolbox';
 import { DrawingOverlay } from './drawing/DrawingOverlay';
 import { BuildingHeightPanel } from './drawing/BuildingHeightPanel';
 import { BuildingContextMenu } from './drawing/BuildingContextMenu';
+import { WhatsNew } from './WhatsNew';
 import { SunPathOverlay } from './sunpath/SunPathOverlay';
 import { SunArcOverlay } from './sunpath/SunArcOverlay';
 
@@ -38,6 +39,7 @@ export function App() {
         <LandmarkInfo />
         <SunPathOverlay />
         <SunArcOverlay />
+        <WhatsNew />
         {isMobile && <MobileFloatingControls onOpenPanel={openPanel} />}
       </div>
 
