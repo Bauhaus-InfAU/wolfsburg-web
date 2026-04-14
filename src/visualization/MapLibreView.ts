@@ -9,6 +9,18 @@ import type { HeatmapGradient } from '../config/gradientPresets';
 import type { Landmark } from '../config/landmarks';
 import { LANDMARK_CATEGORY_COLORS } from '../config/landmarks';
 
+/** SVG inner paths (24×24 viewBox) for each landmark category */
+const LANDMARK_ICONS: Record<string, string> = {
+  Recreation: `<polygon points="12 2 20 16 4 16" stroke-linejoin="round"/><rect x="10" y="16" width="4" height="6" rx="0.5"/>`,
+  Industry:   `<rect x="2" y="7" width="20" height="14" rx="1"/><polyline points="17 7 17 2 7 2 7 7"/><line x1="8" y1="13" x2="8" y2="14"/><line x1="12" y1="13" x2="12" y2="14"/><line x1="16" y1="13" x2="16" y2="14"/>`,
+  Corporate:  `<rect x="3" y="3" width="18" height="18" rx="1"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="9" x2="9" y2="21"/><line x1="15" y1="9" x2="15" y2="21"/>`,
+  Attraction: `<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>`,
+  Culture:    `<path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>`,
+  Sport:      `<polyline points="8 21 12 17 16 21"/><line x1="12" y1="17" x2="12" y2="11"/><path d="M7 4H4a2 2 0 0 0-2 2v2a4 4 0 0 0 4 4"/><path d="M17 4h3a2 2 0 0 1 2 2v2a4 4 0 0 1-4 4"/><path d="M7 4a5 5 0 0 0 10 0H7z"/>`,
+  Museum:     `<polyline points="3 22 3 13 12 2 21 13 21 22"/><line x1="10" y1="22" x2="10" y2="14"/><line x1="14" y1="22" x2="14" y2="14"/>`,
+  Retail:     `<path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/>`,
+};
+
 // Natural element categories from blocks tn__bez field
 const WATER_TYPES = [
   'Fliessgewässer',      // Flowing water (rivers, streams, canals)
@@ -921,13 +933,18 @@ export class MapLibreView {
       el.style.cursor = 'pointer';
       el.style.pointerEvents = 'auto';
 
+      const svgPaths = LANDMARK_ICONS[landmark.category];
+      const iconInner = svgPaths
+        ? `<svg viewBox="0 0 24 24" fill="none" stroke="${accent}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${svgPaths}</svg>`
+        : `<span style="font-size:11px;font-weight:700;color:${accent}">${landmark.shortName.charAt(0)}</span>`;
+
       el.innerHTML = `
         <div class="lm-inner">
           <div class="lm-head">
             <span class="lm-ring" style="animation-delay:0s"></span>
             <span class="lm-ring" style="animation-delay:0.85s"></span>
             <span class="lm-ring" style="animation-delay:1.7s"></span>
-            <div class="lm-icon" style="font-size:11px;font-weight:700;color:${accent}">${landmark.shortName.charAt(0)}</div>
+            <div class="lm-icon">${iconInner}</div>
           </div>
           <div class="lm-tip"></div>
           <div class="lm-label">

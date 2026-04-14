@@ -91,13 +91,13 @@ export function getSunTimes(date: Date, lat: number, lng: number): SunTimes {
 }
 
 /** Sun positions sampled every `stepMinutes` throughout the day (for arc rendering) */
-export function getSunArc(date: Date, lat: number, lng: number, stepMinutes = 15): SunPosition[] {
+export function getSunArc(date: Date, lat: number, lng: number, stepMinutes = 5): SunPosition[] {
   const positions: SunPosition[] = [];
-  const d = new Date(date);
-  d.setHours(0, 0, 0, 0);
+  const base = new Date(date);
+  base.setHours(0, 0, 0, 0);
+  const baseTime = base.getTime();
   for (let m = 0; m <= 1440; m += stepMinutes) {
-    d.setMinutes(m);
-    positions.push(getSunPosition(d, lat, lng));
+    positions.push(getSunPosition(new Date(baseTime + m * 60_000), lat, lng));
   }
   return positions;
 }
