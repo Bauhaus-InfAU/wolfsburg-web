@@ -10,6 +10,7 @@ import { TransportModeSelector } from './TransportModeSelector';
 import { SegmentEditor } from './SegmentEditor';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { PublicTransportPanel } from './PublicTransportPanel';
+import { LiveTrafficPanel } from './LiveTrafficPanel';
 
 const MIN_WIDTH = 300;
 const MAX_WIDTH = 500;
@@ -96,6 +97,11 @@ export function ControlPanel() {
             {/* Display Options */}
             <CollapsibleSection title="Display Options" defaultOpen>
               <VisualizationToggles />
+            </CollapsibleSection>
+
+            {/* Live Traffic */}
+            <CollapsibleSection title="Live Traffic" defaultOpen>
+              <LiveTrafficPanel />
             </CollapsibleSection>
 
             {/* Street Segment Editor */}
