@@ -9,6 +9,7 @@ import { MobileFloatingControls } from './mobile/MobileFloatingControls';
 import { MobileControlsContent } from './mobile/MobileControlsContent';
 import { MobileDataContent } from './mobile/MobileDataContent';
 import { useMobileLayout } from '@/hooks/useMobileLayout';
+import { CursorOverlay } from './CursorOverlay';
 
 export function App() {
   const { isMobile, activePanel, openPanel, closePanel } = useMobileLayout();
@@ -53,6 +54,7 @@ export function App() {
       )}
 
       <LoadingOverlay />
+      <CursorOverlay />
     </div>
   );
 }
