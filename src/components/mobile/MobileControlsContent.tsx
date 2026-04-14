@@ -3,6 +3,7 @@ import { VisualizationToggles } from '@/components/panels/VisualizationToggles';
 import { StatsDisplay } from '@/components/panels/StatsDisplay';
 import { CalculateButton } from '@/components/panels/CalculateButton';
 import { TransportModeSelector } from '@/components/panels/TransportModeSelector';
+import { LiveTrafficPanel } from '@/components/panels/LiveTrafficPanel';
 
 export function MobileControlsContent() {
   return (
@@ -32,6 +33,14 @@ export function MobileControlsContent() {
           Display
         </h3>
         <VisualizationToggles />
+      </section>
+
+      {/* Live Traffic */}
+      <section>
+        <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
+          Live Traffic
+        </h3>
+        <LiveTrafficPanel />
       </section>
 
       {/* Land Use Filters */}
