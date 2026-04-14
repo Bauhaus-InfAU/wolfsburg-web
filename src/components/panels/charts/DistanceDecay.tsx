@@ -117,8 +117,8 @@ export function DistanceDecay({ serviceDistances }: DistanceDecayProps) {
                       <div className="space-y-0.5">
                         {[...payload]
                           .sort((a, b) => (b.value as number) - (a.value as number))
-                          .map((entry: { dataKey?: string; color?: string; value?: number }) => {
-                            const landUse = entry.dataKey as LandUse;
+                          .map((entry) => {
+                            const landUse = String(entry.dataKey) as LandUse;
                             const value = entry.value ?? 0;
                             const avgDist = avgDistanceMap.get(landUse);
                             return (
