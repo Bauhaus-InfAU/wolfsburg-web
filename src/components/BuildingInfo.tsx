@@ -6,15 +6,23 @@ import { findNearestLandmark } from '@/config/landmarks';
 import type { LandUse } from '@/config/types';
 import { BlueprintSlider } from './BlueprintSlider';
 
+/** Returns a deterministic, consistent real-photo URL for any building ID via picsum.photos */
+function getBuildingPhotoUrl(buildingId: string): string {
+  const seed = encodeURIComponent(buildingId || 'building');
+  return `https://picsum.photos/seed/${seed}/800/500`;
+}
+
 export function BuildingInfo() {
   const { selectedBuildingStats, clearSelectedBuilding, getMapView } = useSimulation();
   const [position, setPosition] = useState<{ x: number; y: number } | null>(null);
-  const [imgError, setImgError] = useState(false);
+  const [landmarkImgError, setLandmarkImgError] = useState(false);
+  const [buildingImgError, setBuildingImgError] = useState(false);
   const [showBlueprint, setShowBlueprint] = useState(false);
 
   // Reset image error / blueprint state when a new building is selected
   useEffect(() => {
-    setImgError(false);
+    setLandmarkImgError(false);
+    setBuildingImgError(false);
     setShowBlueprint(false);
   }, [selectedBuildingStats?.building.id]);
 
@@ -55,7 +63,8 @@ export function BuildingInfo() {
     <>
       {/* ── Floating popup ─────────────────────────────────────────── */}
       <div
-        className="absolute z-20"
+        key={building.id}
+        className="absolute z-20 building-popup-enter"
         style={{
           left: position.x,
           top: position.y,
@@ -65,31 +74,37 @@ export function BuildingInfo() {
         <div className="bg-card border border-border rounded-xl shadow-xl overflow-hidden"
              style={{ width: 272 }}>
 
-          {/* ── Photo / landmark header ─────────────────────────── */}
-          <div className="relative overflow-hidden" style={{ height: 152 }}>
-            {landmark && !imgError ? (
-              /* Real photo — user drops image at public/images/landmarks/<id>.jpg */
+          {/* ── Accent top stripe ───────────────────────────────── */}
+          <div style={{ height: 3, background: primaryColor, opacity: 0.85 }} />
+
+          {/* ── Photo header ────────────────────────────────────── */}
+          <div className="relative overflow-hidden" style={{ height: 160 }}>
+            {/* Landmark photo (local file) takes priority if it loads */}
+            {landmark && !landmarkImgError ? (
               <img
                 src={landmark.photoUrl}
                 alt={landmark.name}
-                onError={() => setImgError(true)}
+                onError={() => setLandmarkImgError(true)}
+                className="w-full h-full object-cover"
+                draggable={false}
+              />
+            ) : !buildingImgError ? (
+              /* Real per-building photo via picsum (deterministic seed = building ID) */
+              <img
+                src={getBuildingPhotoUrl(building.id)}
+                alt={building.id}
+                onError={() => setBuildingImgError(true)}
                 className="w-full h-full object-cover"
                 draggable={false}
               />
             ) : (
-              /* Gradient fallback — always shown for non-landmarks */
+              /* Last-resort solid color if both photos fail */
               <div
-                className="w-full h-full flex flex-col items-center justify-center gap-1"
+                className="w-full h-full"
                 style={{
-                  background: landmark
-                    ? `linear-gradient(135deg, ${landmark.accentColor}22 0%, ${landmark.accentColor}44 100%)`
-                    : `linear-gradient(135deg, ${primaryColor}18 0%, ${primaryColor}35 100%)`,
-                  borderBottom: `1px solid ${landmark ? landmark.accentColor : primaryColor}30`,
+                  background: `linear-gradient(135deg, ${primaryColor}25 0%, ${primaryColor}50 100%)`,
                 }}
-              >
-                {/* Mini plan view as "photo" for regular buildings */}
-                <MiniPlanView building={building} color={landmark ? landmark.accentColor : primaryColor} />
-              </div>
+              />
             )}
 
             {/* Gradient overlay for text legibility */}
@@ -199,6 +214,20 @@ export function BuildingInfo() {
           </div>
 
         </div>
+
+        {/* ── Pin pointer triangle ─────────────────────────────── */}
+        <div className="flex justify-center">
+          <div
+            style={{
+              width: 0,
+              height: 0,
+              borderLeft: '8px solid transparent',
+              borderRight: '8px solid transparent',
+              borderTop: `8px solid ${primaryColor}`,
+              opacity: 0.85,
+            }}
+          />
+        </div>
       </div>
 
       {/* ── Blueprint slider (anchored to bottom of map container) ── */}
@@ -211,41 +240,3 @@ export function BuildingInfo() {
   );
 }
 
-/* ── Mini top-down plan for the photo placeholder ───────────────────── */
-function MiniPlanView({ building, color }: { building: { feature: { geometry: { coordinates: number[][][][] } } }; color: string }) {
-  const coords = building.feature.geometry.coordinates.flatMap(poly => poly.flat());
-  if (coords.length === 0) return null;
-
-  const lngs = coords.map(c => c[0]);
-  const lats = coords.map(c => c[1]);
-  const minLng = Math.min(...lngs), maxLng = Math.max(...lngs);
-  const minLat = Math.min(...lats), maxLat = Math.max(...lats);
-  const rangeW = maxLng - minLng || 1e-6;
-  const rangeH = maxLat - minLat || 1e-6;
-
-  const size = 100, pad = 14;
-  const scale = Math.min((size - pad * 2) / rangeW, (size - pad * 2) / rangeH);
-  const offX = pad + (size - pad * 2 - rangeW * scale) / 2;
-  const offY = pad + (size - pad * 2 - rangeH * scale) / 2;
-
-  const project = ([lng, lat]: number[]) =>
-    `${(offX + (lng - minLng) * scale).toFixed(1)},${(offY + (maxLat - lat) * scale).toFixed(1)}`;
-
-  const rings = building.feature.geometry.coordinates.flatMap(poly => poly);
-
-  return (
-    <svg viewBox={`0 0 ${size} ${size}`} style={{ width: 90, height: 90, opacity: 0.7 }}>
-      {rings.map((ring, i) => (
-        <polygon
-          key={i}
-          points={ring.map(project).join(' ')}
-          fill={color}
-          fillOpacity={i === 0 ? 0.25 : 0}
-          stroke={color}
-          strokeWidth="1.2"
-          strokeOpacity={0.7}
-        />
-      ))}
-    </svg>
-  );
-}

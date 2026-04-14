@@ -839,17 +839,42 @@ export class MapLibreView {
 
     for (const landmark of landmarks) {
       const el = document.createElement('div');
-      el.className = 'landmark-marker';
+      el.className = 'lm-marker';
       el.title = `${landmark.name} — ${landmark.description}`;
+      el.style.setProperty('--lm-accent', landmark.accentColor);
+      el.style.cursor = 'pointer';
+      el.style.pointerEvents = 'auto';
 
       el.innerHTML = `
-        <div class="landmark-badge">${landmark.iconSvg}</div>
-        <div class="landmark-stem"></div>
-        <div class="landmark-label">${landmark.name}</div>
+        <div class="lm-inner">
+          <div class="lm-head">
+            <span class="lm-ring" style="animation-delay:0s"></span>
+            <span class="lm-ring" style="animation-delay:0.85s"></span>
+            <span class="lm-ring" style="animation-delay:1.7s"></span>
+            <div class="lm-icon">${landmark.iconSvg}</div>
+          </div>
+          <div class="lm-tip"></div>
+          <div class="lm-label">
+            <span class="lm-dot"></span>${landmark.name}
+          </div>
+        </div>
       `;
 
-      // Enable hover interaction on the marker element
-      el.style.pointerEvents = 'auto';
+      // Clicking a landmark pin opens its building info card
+      el.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (!this.onBuildingClick) return;
+        const pt = this.map.project(landmark.coordinates as maplibregl.LngLatLike);
+        const r = 40;
+        const hits = this.map.queryRenderedFeatures(
+          [[pt.x - r, pt.y - r], [pt.x + r, pt.y + r]],
+          { layers: ['buildings-fill'] }
+        );
+        if (hits.length > 0) {
+          const bid = hits[0].properties?.['Building ID'];
+          if (bid) this.onBuildingClick(bid, landmark.coordinates);
+        }
+      });
 
       const marker = new maplibregl.Marker({ element: el, anchor: 'bottom' })
         .setLngLat(landmark.coordinates)
