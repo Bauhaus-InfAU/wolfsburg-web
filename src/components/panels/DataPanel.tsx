@@ -8,6 +8,10 @@ import { WalkabilityScore } from './charts/WalkabilityScore';
 import { LowWalkability } from './charts/LowWalkability';
 import { DistanceDecay } from './charts/DistanceDecay';
 import { LandUseDonut } from './charts/LandUseDonut';
+import { PopulationStats } from './charts/PopulationStats';
+import { PopulationAgeChart } from './charts/PopulationAgeChart';
+import { PopulationDistrictChart } from './charts/PopulationDistrictChart';
+import { PopulationTrend } from './charts/PopulationTrend';
 
 const MIN_WIDTH = 240;
 const MAX_WIDTH = 420;
@@ -123,6 +127,16 @@ export function DataPanel() {
                 streets={topStreets}
                 totalSegments={totalSegments}
               />
+            </div>
+          </div>
+
+          {/* Population & Distribution Section */}
+          <div className="pt-2 border-t border-border">
+            <div className="space-y-3">
+              <PopulationStats />
+              <PopulationTrend />
+              <PopulationAgeChart />
+              <PopulationDistrictChart />
             </div>
           </div>
         </div>
