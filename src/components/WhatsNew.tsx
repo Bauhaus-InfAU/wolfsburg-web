@@ -7,11 +7,19 @@ interface ChangeEntry {
 }
 
 const CHANGES: ChangeEntry[] = [
-  { text: 'Sun Path controls moved to left panel', author: 'Egor' },
-  { text: 'Landmark pins now show category icons', author: 'Egor' },
-  { text: 'Fixed compass arc (was rendering multiple days at once)', author: 'Egor' },
-  { text: 'Compass rotates with map, visible only when Sun Path is open', author: 'Egor' },
-  { text: 'PR preview deployments via GitHub Actions', author: 'Egor' },
+  { text: 'Sun path moved to left panel, landmark category icons, compass fix', author: 'Egor' },
+  { text: 'Building drawing tools — draw, set height, context menu', author: 'Pragathi & Samhitha' },
+  { text: 'Enhanced landmark pins, building photos & blueprint panel', author: 'Divya' },
+  { text: 'Live traffic with time-of-day simulation', author: 'Samhitha' },
+  { text: 'Fixed transit API stop discovery (Overpass)', author: 'Anastasiia' },
+  { text: 'Population data panel and district distribution', author: 'Phyllis' },
+  { text: 'Public transport panel', author: 'Anastasiia' },
+  { text: 'Open spaces layer + clickable landmark pins', author: 'Zhasmin' },
+  { text: 'Distance decay chart — live legend & cursor line', author: 'ofa5406' },
+  { text: 'Street segment editor (add, remove, save)', author: 'Dikshya' },
+  { text: 'Dark / light mode toggle and map theming', author: 'Başak' },
+  { text: 'Real-time cursor sharing', author: 'Egor' },
+  { text: 'Static flow model replacing agent simulation', author: 'Egor' },
 ];
 
 export function WhatsNew() {
