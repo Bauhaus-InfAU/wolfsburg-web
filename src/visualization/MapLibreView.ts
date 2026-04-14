@@ -5,6 +5,7 @@ import type { BlockCollection } from '../data/dataLoader';
 import { LAND_USE_COLORS } from '../config/constants';
 import { getCityConfig } from '../config/cityConfig';
 import type { HeatmapGradient } from '../config/gradientPresets';
+import type { Landmark } from '../config/landmarks';
 
 // Natural element categories from blocks tn__bez field
 const WATER_TYPES = [
@@ -38,6 +39,7 @@ export class MapLibreView {
   public agentCtx: CanvasRenderingContext2D;
 
   private container: HTMLElement;
+  private landmarkMarkers: maplibregl.Marker[] = [];
 
   // Callbacks
   public onViewChange: (() => void) | null = null;
@@ -821,6 +823,39 @@ export class MapLibreView {
       if (this.map.getLayer('green-space-fill')) {
         this.map.setPaintProperty('green-space-fill', 'fill-color', '#c8e6c9');
       }
+    }
+  }
+
+  /**
+   * Add HTML marker pins for iconic landmark buildings.
+   * Each marker shows a category icon and a name label.
+   */
+  addLandmarkMarkers(landmarks: Landmark[]): void {
+    // Remove any existing markers first
+    for (const marker of this.landmarkMarkers) {
+      marker.remove();
+    }
+    this.landmarkMarkers = [];
+
+    for (const landmark of landmarks) {
+      const el = document.createElement('div');
+      el.className = 'landmark-marker';
+      el.title = `${landmark.name} — ${landmark.description}`;
+
+      el.innerHTML = `
+        <div class="landmark-badge">${landmark.iconSvg}</div>
+        <div class="landmark-stem"></div>
+        <div class="landmark-label">${landmark.name}</div>
+      `;
+
+      // Enable hover interaction on the marker element
+      el.style.pointerEvents = 'auto';
+
+      const marker = new maplibregl.Marker({ element: el, anchor: 'bottom' })
+        .setLngLat(landmark.coordinates)
+        .addTo(this.map);
+
+      this.landmarkMarkers.push(marker);
     }
   }
 

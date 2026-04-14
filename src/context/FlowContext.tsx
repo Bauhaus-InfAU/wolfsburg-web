@@ -10,6 +10,7 @@ import { loadBuildings, loadStreets, loadBlocks, type BlockCollection } from '..
 import { transformFeatureCollection } from '../utils/coordinateTransform';
 import { getCityConfig } from '../config/cityConfig';
 import { createLegend } from '../visualization/buildingLayer';
+import { WOLFSBURG_LANDMARKS } from '../config/landmarks';
 import type { SegmentUsage } from '../data/StreetUsageTracker';
 import { calculateBuildingWalkability, getWalkabilityBuildingsInRange, type BuildingWalkabilityScore } from '../data/buildingWalkability';
 import { DEFAULT_GRADIENT, GRADIENT_STORAGE_KEY, type HeatmapGradient } from '../config/gradientPresets';
@@ -389,6 +390,11 @@ export function FlowProvider({ children }: { children: React.ReactNode }) {
 
       mapView.addLowWalkabilityLayer();
       mapView.addBuildingsLayer(enrichedBuildings);
+
+      // Add iconic landmark markers (Wolfsburg only)
+      if (getCityConfig().id === 'wolfsburg') {
+        mapView.addLandmarkMarkers(WOLFSBURG_LANDMARKS);
+      }
 
       // Calculate walkability scores
       setLoadingStatus('Calculating walkability...');
