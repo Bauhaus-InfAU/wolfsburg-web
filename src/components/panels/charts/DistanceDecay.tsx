@@ -119,10 +119,10 @@ export function DistanceDecay({ serviceDistances }: DistanceDecayProps) {
                           .sort((a, b) => (b.value as number) - (a.value as number))
                           .map((entry) => {
                             const landUse = String(entry.dataKey) as LandUse;
-                            const value = entry.value ?? 0;
+                            const value = typeof entry.value === 'number' ? entry.value : 0;
                             const avgDist = avgDistanceMap.get(landUse);
                             return (
-                              <div key={entry.dataKey} className="flex items-center gap-1.5">
+                              <div key={String(entry.dataKey)} className="flex items-center gap-1.5">
                                 <div
                                   className="w-2 h-2 rounded-full flex-shrink-0"
                                   style={{ backgroundColor: entry.color }}
