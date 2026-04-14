@@ -7,6 +7,7 @@ import { VisualizationToggles } from './VisualizationToggles';
 import { StatsDisplay } from './StatsDisplay';
 import { CalculateButton } from './CalculateButton';
 import { TransportModeSelector } from './TransportModeSelector';
+import { LiveTrafficPanel } from './LiveTrafficPanel';
 
 const MIN_WIDTH = 300;
 const MAX_WIDTH = 500;
@@ -89,6 +90,11 @@ export function ControlPanel() {
             {/* Display Options */}
             <CollapsibleSection title="Display Options" defaultOpen>
               <VisualizationToggles />
+            </CollapsibleSection>
+
+            {/* Live Traffic */}
+            <CollapsibleSection title="Live Traffic" defaultOpen>
+              <LiveTrafficPanel />
             </CollapsibleSection>
 
             {/* Land Use Filters */}
