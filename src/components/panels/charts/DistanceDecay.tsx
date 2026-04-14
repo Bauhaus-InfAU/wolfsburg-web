@@ -1,4 +1,5 @@
-import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, Tooltip as RechartsTooltip } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, ReferenceLine } from 'recharts';
+import { useState } from 'react';
 import { MID_DECAY_BETA } from '@/data/midMobilityData';
 import { LAND_USE_COLORS, LAND_USE_DISPLAY_NAMES } from '@/config/constants';
 import type { LandUse } from '@/config/types';
@@ -52,6 +53,8 @@ function generateDecayData(): DataPoint[] {
 const decayData = generateDecayData();
 
 export function DistanceDecay({ serviceDistances }: DistanceDecayProps) {
+  const [hoverDistance, setHoverDistance] = useState<number | null>(null);
+
   // Create a map for quick lookup of avg distances by land use
   const avgDistanceMap = new Map<LandUse, number>(
     serviceDistances.map(sd => [sd.landUse, sd.avgDistance])
@@ -91,6 +94,12 @@ export function DistanceDecay({ serviceDistances }: DistanceDecayProps) {
           <LineChart
             data={decayData}
             margin={{ top: 5, right: 5, left: -15, bottom: 0 }}
+            onMouseMove={(state) => {
+              if (state.isTooltipActive && state.activeLabel !== undefined) {
+                setHoverDistance(Number(state.activeLabel));
+              }
+            }}
+            onMouseLeave={() => setHoverDistance(null)}
           >
             <XAxis
               dataKey="distance"
@@ -108,46 +117,35 @@ export function DistanceDecay({ serviceDistances }: DistanceDecayProps) {
               domain={[0, 1]}
               ticks={[0, 0.25, 0.5, 0.75, 1]}
             />
-            <RechartsTooltip
-              content={({ active, payload, label }) => {
-                if (active && payload && payload.length > 0) {
-                  return (
-                    <div className="bg-popover text-popover-foreground text-[10px] px-2 py-1.5 rounded shadow border border-border">
-                      <div className="font-medium mb-1">{label}m distance</div>
-                      <div className="space-y-0.5">
-                        {[...payload]
-                          .sort((a, b) => (b.value as number) - (a.value as number))
-                          .map((entry) => {
-                            const landUse = String(entry.dataKey) as LandUse;
-                            const value = typeof entry.value === 'number' ? entry.value : 0;
-                            const avgDist = avgDistanceMap.get(landUse);
-                            return (
-                              <div key={String(entry.dataKey)} className="flex items-center gap-1.5">
-                                <div
-                                  className="w-2 h-2 rounded-full flex-shrink-0"
-                                  style={{ backgroundColor: entry.color }}
-                                />
-                                <span className="truncate">
-                                  {LAND_USE_DISPLAY_NAMES[landUse]}
-                                </span>
-                                <span className="ml-auto tabular-nums">
-                                  {Math.round(value * 100)}%
-                                </span>
-                                {avgDist !== undefined && (
-                                  <span className="text-muted-foreground tabular-nums">
-                                    ({avgDist}m)
-                                  </span>
-                                )}
-                              </div>
-                            );
-                          })}
-                      </div>
-                    </div>
-                  );
-                }
-                return null;
-              }}
-            />
+            {MID_LAND_USES.map((landUse) => {
+              const avgDist = avgDistanceMap.get(landUse);
+              if (avgDist === undefined) return null;
+              return (
+                <ReferenceLine
+                  key={`ref-${landUse}`}
+                  x={avgDist}
+                  stroke={LAND_USE_COLORS[landUse]}
+                  strokeWidth={1}
+                  strokeOpacity={0.5}
+                  strokeDasharray="2 2"
+                />
+              );
+            })}
+            {hoverDistance !== null && (
+              <ReferenceLine
+                x={hoverDistance}
+                stroke="hsl(var(--foreground))"
+                strokeWidth={1}
+                strokeOpacity={0.6}
+                label={{
+                  value: `${hoverDistance}m`,
+                  position: 'insideBottomLeft',
+                  fontSize: 8,
+                  fill: 'hsl(var(--foreground))',
+                  dy: 10,
+                }}
+              />
+            )}
             {MID_LAND_USES.map((landUse) => (
               <Line
                 key={landUse}
@@ -162,19 +160,33 @@ export function DistanceDecay({ serviceDistances }: DistanceDecayProps) {
           </LineChart>
         </ResponsiveContainer>
       </div>
-      {/* Compact legend */}
-      <div className="flex flex-wrap gap-x-2 gap-y-1 mt-2">
-        {MID_LAND_USES.map((landUse) => (
-          <div key={landUse} className="flex items-center gap-1">
-            <div
-              className="w-2 h-2 rounded-full"
-              style={{ backgroundColor: LAND_USE_COLORS[landUse] }}
-            />
-            <span className="text-[8px] text-muted-foreground">
-              {LAND_USE_DISPLAY_NAMES[landUse]}
-            </span>
-          </div>
-        ))}
+      {/* Compact legend — updates live as cursor moves over chart */}
+      <div className="flex flex-col gap-y-0.5 mt-2">
+        {MID_LAND_USES.map((landUse) => {
+          const beta = MID_DECAY_BETA[landUse];
+          const avgDist = avgDistanceMap.get(landUse);
+          const activeDist = hoverDistance ?? avgDist;
+          const pct = activeDist !== undefined ? Math.round(Math.exp(-beta * activeDist) * 100) : null;
+          return (
+            <div key={landUse} className="flex items-center gap-1.5">
+              <div
+                className="w-2 h-2 rounded-full flex-shrink-0"
+                style={{ backgroundColor: LAND_USE_COLORS[landUse] }}
+              />
+              <span className="text-[8px] text-muted-foreground flex-1">
+                {LAND_USE_DISPLAY_NAMES[landUse]}
+              </span>
+              {pct !== null && (
+                <span
+                  className="text-[8px] tabular-nums font-medium transition-colors"
+                  style={{ color: LAND_USE_COLORS[landUse] }}
+                >
+                  {pct}%
+                </span>
+              )}
+            </div>
+          );
+        })}
       </div>
     </div>
   );
