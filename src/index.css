@@ -140,3 +140,150 @@
 .pb-safe {
   padding-bottom: max(1rem, env(safe-area-inset-bottom));
 }
+
+/* ── Landmark marker keyframes ─────────────────────────────────────────── */
+
+@keyframes lm-enter {
+  0%   { opacity: 0; transform: scale(0.5) translateY(14px); }
+  70%  { transform: scale(1.08) translateY(-2px); }
+  100% { opacity: 1; transform: scale(1)   translateY(0);    }
+}
+
+@keyframes lm-pulse {
+  0%   { transform: scale(1);  opacity: 0.75; }
+  100% { transform: scale(3);  opacity: 0;    }
+}
+
+/* Building popup pop-in */
+@keyframes popup-enter {
+  from { opacity: 0; transform: translate(-50%, -100%) translateY(-14px) scale(0.82); }
+  to   { opacity: 1; transform: translate(-50%, -100%) translateY(-14px) scale(1);    }
+}
+
+/* ── Landmark map-pin markers ──────────────────────────────────────────── */
+
+/* lm-marker is the MapLibre anchor — never apply transform here */
+.lm-marker {
+  display: block;
+}
+
+/* lm-inner is the visual layer — safe to animate */
+.lm-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  animation: lm-enter 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  transform-origin: bottom center;
+}
+
+/* Pin head — circle containing the icon */
+.lm-head {
+  position: relative;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(circle at 38% 32%, #2e2e2e, #0c0c0c);
+  border: 2.5px solid var(--lm-accent, #f57f5b);
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.6),
+    0 5px 18px rgba(0, 0, 0, 0.65),
+    0 0 16px -4px var(--lm-accent, #f57f5b);
+  transition: transform 0.18s ease, box-shadow 0.2s ease;
+  z-index: 2;
+}
+
+/* Three radiating pulse rings — staggered via inline style */
+.lm-ring {
+  position: absolute;
+  inset: -2px;
+  border-radius: 50%;
+  border: 1.5px solid var(--lm-accent, #f57f5b);
+  animation: lm-pulse 2.55s ease-out infinite;
+  pointer-events: none;
+}
+
+/* Icon inside the pin head */
+.lm-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--lm-accent, #f57f5b);
+  filter: drop-shadow(0 0 6px var(--lm-accent, #f57f5b));
+  z-index: 1;
+}
+.lm-icon svg {
+  width: 22px;
+  height: 22px;
+}
+
+/* Downward-pointing triangular tip */
+.lm-tip {
+  width: 0;
+  height: 0;
+  border-left:  9px solid transparent;
+  border-right: 9px solid transparent;
+  border-top:   13px solid var(--lm-accent, #f57f5b);
+  margin-top: -2px;
+  filter: drop-shadow(0 3px 5px rgba(0, 0, 0, 0.5));
+  z-index: 1;
+  transition: border-top-color 0.18s ease;
+}
+
+/* Name label below the tip */
+.lm-label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-family: 'Roboto Mono', monospace;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: rgba(240, 240, 240, 0.9);
+  background: rgba(6, 6, 6, 0.88);
+  border: 1px solid var(--lm-accent, #f57f5b);
+  border-left-width: 2.5px;
+  padding: 2px 8px 2px 5px;
+  border-radius: 0 3px 3px 0;
+  white-space: nowrap;
+  backdrop-filter: blur(6px);
+  margin-top: 5px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+  opacity: 0.92;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.lm-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--lm-accent, #f57f5b);
+  box-shadow: 0 0 6px var(--lm-accent, #f57f5b);
+  flex-shrink: 0;
+}
+
+/* Hover — lift pin head, intensify glow */
+.lm-inner:hover .lm-head {
+  transform: scale(1.13) translateY(-2px);
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.6),
+    0 8px 24px rgba(0, 0, 0, 0.7),
+    0 0 28px -4px var(--lm-accent, #f57f5b);
+}
+.lm-inner:hover .lm-label {
+  color: var(--lm-accent, #f57f5b);
+  background: rgba(12, 12, 12, 0.95);
+}
+
+/* Click feedback */
+.lm-inner:active .lm-head {
+  transform: scale(0.96) translateY(0);
+}
+
+/* Building info popup entrance animation */
+.building-popup-enter {
+  animation: popup-enter 0.22s cubic-bezier(0.34, 1.4, 0.64, 1) forwards;
+}

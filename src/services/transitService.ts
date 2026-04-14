@@ -1,7 +1,8 @@
-import type { TransitStop, TransitDeparture } from '../config/types';
+import type { TransitStop } from '../config/types';
 
-// Deutsche Bahn v6 transport.rest API — covers all of Germany including Wolfsburg, free, no API key
-const DB_API = 'https://v6.db.transport.rest';
+// Overpass API (OpenStreetMap) — CORS-enabled, free, no API key required
+// Using the openstreetmap.fr instance which sets Access-Control-Allow-Origin: *
+const OVERPASS_API = 'https://overpass.openstreetmap.fr/api/interpreter';
 
 // Nominatim (OpenStreetMap) geocoding — free, no API key
 const NOMINATIM_API = 'https://nominatim.openstreetmap.org';
@@ -36,79 +37,80 @@ export async function geocodeAddress(address: string): Promise<[number, number] 
 }
 
 /**
- * Fetch transit stops near a coordinate within a given radius.
- * Uses DB transport.rest /locations/nearby endpoint.
+ * Fetch bus/tram stops near a coordinate within a given radius using Overpass API.
+ * Returns stops from OpenStreetMap data — reliable and CORS-friendly.
  */
 export async function getNearbyStops(
   lat: number,
   lng: number,
   radiusMeters: number
 ): Promise<TransitStop[]> {
-  const url =
-    `${DB_API}/locations/nearby?` +
-    new URLSearchParams({
-      latitude: String(lat),
-      longitude: String(lng),
-      distance: String(radiusMeters),
-      results: '50',
-      language: 'de',
-    });
+  const query = `
+    [out:json][timeout:25];
+    (
+      node["highway"="bus_stop"](around:${radiusMeters},${lat},${lng});
+      node["public_transport"="platform"]["bus"="yes"](around:${radiusMeters},${lat},${lng});
+      node["public_transport"="platform"]["tram"="yes"](around:${radiusMeters},${lat},${lng});
+    );
+    out body;
+  `.trim();
 
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`DB API error: ${res.status}`);
+  const res = await fetch(OVERPASS_API, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: `data=${encodeURIComponent(query)}`,
+  });
+
+  if (!res.ok) throw new Error(`Overpass API error: ${res.status}`);
 
   const data = await res.json();
-  if (!Array.isArray(data)) return [];
+  const elements: OverpassNode[] = data.elements ?? [];
 
-  return data
-    .filter((s: Record<string, unknown>) => s.type === 'stop' || s.type === 'station')
-    .map((s: Record<string, unknown>) => {
-      const location = s.location as Record<string, number> | undefined;
+  // Deduplicate by name+position
+  const seen = new Set<string>();
+
+  return elements
+    .filter((el) => {
+      const key = `${el.tags?.name ?? el.id}_${el.lat?.toFixed(4)}_${el.lon?.toFixed(4)}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .map((el) => {
+      const distanceM = haversineDistance(lat, lng, el.lat, el.lon);
+      const lines = el.tags?.route_ref ?? el.tags?.ref ?? null;
       return {
-        id: String(s.id),
-        name: String(s.name),
-        lat: location?.latitude ?? 0,
-        lng: location?.longitude ?? 0,
-        distance: typeof s.distance === 'number' ? s.distance : undefined,
+        id: String(el.id),
+        name: el.tags?.name ?? el.tags?.['name:de'] ?? 'Unnamed stop',
+        lat: el.lat,
+        lng: el.lon,
+        distance: Math.round(distanceM),
+        lines: lines ? lines.split(/[;,]/).map((l) => l.trim()).filter(Boolean) : [],
       };
-    });
+    })
+    .sort((a, b) => (a.distance ?? 0) - (b.distance ?? 0));
 }
 
-/**
- * Fetch departures for a stop in the next 15 minutes.
- * Uses DB transport.rest /stops/{id}/departures endpoint.
- */
-export async function getDepartures(stopId: string): Promise<TransitDeparture[]> {
-  const url =
-    `${DB_API}/stops/${encodeURIComponent(stopId)}/departures?` +
-    new URLSearchParams({
-      when: new Date().toISOString(),
-      duration: '15',
-      results: '20',
-      language: 'de',
-    });
+// ---------------------------------------------------------------------------
+// Internal helpers
+// ---------------------------------------------------------------------------
 
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`DB departures error: ${res.status}`);
+interface OverpassNode {
+  type: string;
+  id: number;
+  lat: number;
+  lon: number;
+  tags?: Record<string, string>;
+}
 
-  const data = await res.json();
-  const list: unknown[] = Array.isArray(data) ? data : (data?.departures ?? []);
-
-  return list.map((d: unknown) => {
-    const dep = d as Record<string, unknown>;
-    const line = dep.line as Record<string, unknown> | undefined;
-    return {
-      line: String(line?.name ?? line?.fahrtNr ?? '?'),
-      direction: String(dep.direction ?? ''),
-      when: String(dep.when ?? dep.plannedWhen ?? ''),
-      plannedWhen: String(dep.plannedWhen ?? ''),
-      delay: typeof dep.delay === 'number' ? dep.delay : null,
-      platform:
-        dep.platform != null
-          ? String(dep.platform)
-          : dep.plannedPlatform != null
-          ? String(dep.plannedPlatform)
-          : null,
-    };
-  });
+function haversineDistance(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 6371000;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLng = ((lng2 - lng1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }

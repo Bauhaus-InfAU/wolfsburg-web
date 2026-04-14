@@ -48,7 +48,8 @@
       "Bash(du:*)",
       "Bash(findstr:*)",
       "WebFetch(domain:graphology.github.io)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(curl:*)"
     ]
   }
 }
