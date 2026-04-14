@@ -15,6 +15,8 @@ interface SunPathContextValue {
   setShadowOpacity: (o: number) => void;
   showSunPath: boolean;
   toggleSunPath: () => void;
+  panelOpen: boolean;
+  setPanelOpen: (v: boolean) => void;
 }
 
 const SunPathContext = createContext<SunPathContextValue | null>(null);
@@ -31,6 +33,7 @@ export function SunPathProvider({ children }: { children: React.ReactNode }) {
   const [showShadows, setShowShadows] = useState(true);
   const [shadowOpacity, setShadowOpacity] = useState(0.35);
   const [showSunPath, setShowSunPath] = useState(true);
+  const [panelOpen, setPanelOpen] = useState(false);
 
   const animFrameRef = useRef<number | null>(null);
   const lastTimeRef  = useRef<number>(0);
@@ -83,6 +86,7 @@ export function SunPathProvider({ children }: { children: React.ReactNode }) {
       showShadows, toggleShadows,
       shadowOpacity, setShadowOpacity,
       showSunPath, toggleSunPath,
+      panelOpen, setPanelOpen,
     }}>
       {children}
     </SunPathContext.Provider>
