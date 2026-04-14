@@ -11,6 +11,13 @@ import { MobileControlsContent } from './mobile/MobileControlsContent';
 import { MobileDataContent } from './mobile/MobileDataContent';
 import { useMobileLayout } from '@/hooks/useMobileLayout';
 import { CursorOverlay } from './CursorOverlay';
+import { DrawingToolbox } from './drawing/DrawingToolbox';
+import { DrawingOverlay } from './drawing/DrawingOverlay';
+import { BuildingHeightPanel } from './drawing/BuildingHeightPanel';
+import { BuildingContextMenu } from './drawing/BuildingContextMenu';
+import { SunPathPanel } from './sunpath/SunPathPanel';
+import { SunPathOverlay } from './sunpath/SunPathOverlay';
+import { SunArcOverlay } from './sunpath/SunArcOverlay';
 
 export function App() {
   const { isMobile, activePanel, openPanel, closePanel } = useMobileLayout();
@@ -20,14 +27,19 @@ export function App() {
       {/* Desktop: Left panel */}
       {!isMobile && <ControlPanel />}
 
-      {/* Map container - always mounted, takes remaining space */}
+      {/* Map container */}
       <div className="flex-1 h-full relative">
         <MapCanvas />
+        <DrawingOverlay />
+        <DrawingToolbox />
+        <BuildingHeightPanel />
+        <BuildingContextMenu />
         <PathPreview />
         <BuildingInfo />
         <LandmarkInfo />
-
-        {/* Mobile: Floating controls overlay */}
+        <SunPathPanel />
+        <SunPathOverlay />
+        <SunArcOverlay />
         {isMobile && <MobileFloatingControls onOpenPanel={openPanel} />}
       </div>
 
@@ -37,19 +49,10 @@ export function App() {
       {/* Mobile: Bottom sheets */}
       {isMobile && (
         <>
-          <BottomSheet
-            isOpen={activePanel === 'controls'}
-            onClose={closePanel}
-            title="Settings"
-          >
+          <BottomSheet isOpen={activePanel === 'controls'} onClose={closePanel} title="Settings">
             <MobileControlsContent />
           </BottomSheet>
-
-          <BottomSheet
-            isOpen={activePanel === 'data'}
-            onClose={closePanel}
-            title="Insights"
-          >
+          <BottomSheet isOpen={activePanel === 'data'} onClose={closePanel} title="Insights">
             <MobileDataContent />
           </BottomSheet>
         </>

@@ -120,6 +120,8 @@ interface FlowContextValue {
 
   // Map access
   getMapView: () => MapLibreView | null;
+  getEnrichedBuildings: () => BuildingCollection | null;
+  getRawStreetData: () => StreetCollection | null;
 
   // Map initialization and resize
   initializeMap: (containerId: string) => void;
@@ -251,6 +253,7 @@ export function FlowProvider({ children }: { children: React.ReactNode }) {
   const partitionerRef = useRef<GraphPartitioner | null>(null);
   const incrementalManagerRef = useRef<IncrementalManager | null>(null);
   const enrichedBuildingsRef = useRef<BuildingCollection | null>(null);
+  const rawStreetDataRef = useRef<StreetCollection | null>(null);
   const initializedRef = useRef(false);
 
   /**
@@ -443,6 +446,7 @@ export function FlowProvider({ children }: { children: React.ReactNode }) {
       }
 
       if (streetData) {
+        rawStreetDataRef.current = streetData;
         mapView.addStreetsLayer(streetData);
       }
 
@@ -455,6 +459,7 @@ export function FlowProvider({ children }: { children: React.ReactNode }) {
 
       mapView.addLowWalkabilityLayer();
       mapView.addBuildingsLayer(enrichedBuildings);
+      mapView.addCustomBuildingsLayer(); // user-drawn buildings layer
 
       // Open spaces rendered last so outlines appear on top of buildings
       if (blockData) {
@@ -895,6 +900,9 @@ export function FlowProvider({ children }: { children: React.ReactNode }) {
     return mapViewRef.current;
   }, []);
 
+  const getEnrichedBuildings = useCallback(() => enrichedBuildingsRef.current, []);
+  const getRawStreetData = useCallback(() => rawStreetDataRef.current, []);
+
   // Graph editing methods
   const addStreet = useCallback((from: [number, number], to: [number, number]) => {
     const streetGraph = streetGraphRef.current;
@@ -1110,6 +1118,8 @@ export function FlowProvider({ children }: { children: React.ReactNode }) {
     findPath,
     setMonochromeBuildings,
     getMapView,
+    getEnrichedBuildings,
+    getRawStreetData,
     initializeMap,
     resizeMap,
     getStreetUsage,
