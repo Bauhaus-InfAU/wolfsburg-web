@@ -28,6 +28,27 @@ const GREEN_SPACE_TYPES = [
   'Landwirtschaft, Grünland',                                    // Grassland
 ];
 
+// All publicly accessible open space types from Wolfsburg blocks data
+const OPEN_SPACE_TYPES = [
+  // Public squares and plazas
+  'Platz',
+  'Platz, Festplatz',
+  'Platz, Marktplatz',
+  // Parks, recreation and leisure (all Sport-/Freizeit- subtypes except buildings)
+  'Sport-, Freizeit- und Erholungsfläche, Park',
+  'Sport-, Freizeit- und Erholungsfläche, Erholungsfläche',
+  'Sport-, Freizeit- und Erholungsfläche, Siedlungsgrünfläche',
+  'Sport-, Freizeit- und Erholungsfläche, Kleingarten',
+  'Sport-, Freizeit- und Erholungsfläche, Spielplatz, Bolzplatz',
+  'Sport-, Freizeit- und Erholungsfläche, Sportanlage',
+  'Sport-, Freizeit- und Erholungsfläche, Campingplatz',
+  'Sport-, Freizeit- und Erholungsfläche, Schwimmen',
+  // Pedestrian zones
+  'Strassenverkehr, Fußgängerzone',
+  // Cemeteries (public open space)
+  'Friedhof',
+];
+
 /**
  * MapLibre GL JS wrapper for WebGL-accelerated map rendering.
  * Replaces Canvas 2D MapView for better pan/zoom performance.
@@ -337,6 +358,62 @@ export class MapLibreView {
         },
       });
     }
+  }
+
+  /**
+   * Add a dedicated open spaces layer covering all publicly accessible open areas:
+   * plazas, squares, parks, recreation, sports, playgrounds, pedestrian zones, cemeteries.
+   * Hidden by default; toggled via setOpenSpacesVisibility().
+   */
+  addOpenSpacesLayer(blockData: BlockCollection): void {
+    const openSpaceFeatures = blockData.features.filter(
+      f => f.properties.tn__bez && OPEN_SPACE_TYPES.includes(f.properties.tn__bez)
+    );
+
+    console.log(`Open spaces: ${openSpaceFeatures.length} features`);
+
+    if (openSpaceFeatures.length === 0) return;
+
+    this.map.addSource('open-spaces', {
+      type: 'geojson',
+      data: {
+        type: 'FeatureCollection',
+        features: openSpaceFeatures,
+      },
+    });
+
+    // Filled area
+    this.map.addLayer({
+      id: 'open-spaces-fill',
+      type: 'fill',
+      source: 'open-spaces',
+      layout: { 'visibility': 'none' },
+      paint: {
+        'fill-color': '#f57f5b',  // App accent coral
+        'fill-opacity': 0.18,
+      },
+    });
+
+    // Thick outline — rendered on top of streets and buildings
+    this.map.addLayer({
+      id: 'open-spaces-outline',
+      type: 'line',
+      source: 'open-spaces',
+      layout: { 'visibility': 'none' },
+      paint: {
+        'line-color': '#f57f5b',  // App accent coral
+        'line-width': 2.5,
+        'line-opacity': 1,
+      },
+    });
+  }
+
+  /**
+   * Show or hide the open spaces layer.
+   */
+  setOpenSpacesVisibility(visible: boolean): void {
+    this.setLayerVisibility('open-spaces-fill', visible);
+    this.setLayerVisibility('open-spaces-outline', visible);
   }
 
   /**

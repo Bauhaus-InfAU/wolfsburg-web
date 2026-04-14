@@ -41,6 +41,7 @@ interface FlowContextValue {
   topStreetsRange: [number, number];
   showLowWalkability: boolean;
   lowWalkabilityRange: [number, number];
+  showOpenSpaces: boolean;
 
   // Calculation state
   isCalculating: boolean;
@@ -66,6 +67,7 @@ interface FlowContextValue {
   setTransportMode: (mode: TransportMode) => void;
   setShowUsageHeatmap: (show: boolean) => void;
   setShowTopStreets: (show: boolean) => void;
+  setShowOpenSpaces: (show: boolean) => void;
 
   // Heatmap gradient
   heatmapGradient: HeatmapGradient;
@@ -135,6 +137,7 @@ export function FlowProvider({ children }: { children: React.ReactNode }) {
   const [transportMode, setTransportModeState] = useState<TransportMode>('pedestrian');
   const [showUsageHeatmap, setShowUsageHeatmap] = useState(true); // Default on for flow model
   const [showTopStreets, setShowTopStreets] = useState(false);
+  const [showOpenSpaces, setShowOpenSpaces] = useState(false);
 
   // Heatmap gradient state with localStorage persistence
   const [heatmapGradient, setHeatmapGradientState] = useState<HeatmapGradient>(() => {
@@ -390,6 +393,11 @@ export function FlowProvider({ children }: { children: React.ReactNode }) {
       mapView.addLowWalkabilityLayer();
       mapView.addBuildingsLayer(enrichedBuildings);
 
+      // Open spaces rendered last so outlines appear on top of buildings
+      if (blockData) {
+        mapView.addOpenSpacesLayer(blockData);
+      }
+
       // Calculate walkability scores
       setLoadingStatus('Calculating walkability...');
       const walkabilityScores = calculateBuildingWalkability(
@@ -527,6 +535,14 @@ export function FlowProvider({ children }: { children: React.ReactNode }) {
       mapView.updateLowWalkabilityBuildings(lowestIds, enrichedBuildings);
     }
   }, [showLowWalkability, lowWalkabilityRange, buildingWalkabilityScores, isLoading]);
+
+  // Update open spaces visibility
+  useEffect(() => {
+    const mapView = mapViewRef.current;
+    if (!mapView || isLoading) return;
+
+    mapView.setOpenSpacesVisibility(showOpenSpaces);
+  }, [showOpenSpaces, isLoading]);
 
   // Update path preview visibility
   useEffect(() => {
@@ -732,6 +748,7 @@ export function FlowProvider({ children }: { children: React.ReactNode }) {
     topStreetsRange,
     showLowWalkability,
     lowWalkabilityRange,
+    showOpenSpaces,
     isCalculating,
     calculationProgress,
     calculationStatus,
@@ -747,6 +764,7 @@ export function FlowProvider({ children }: { children: React.ReactNode }) {
     setTransportMode,
     setShowUsageHeatmap,
     setShowTopStreets,
+    setShowOpenSpaces,
     heatmapGradient,
     setHeatmapGradient,
     resetGradientToDefault,
