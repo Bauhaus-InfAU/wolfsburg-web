@@ -15,9 +15,26 @@ import { createLegend } from '../visualization/buildingLayer';
 import type { SegmentUsage } from '../data/StreetUsageTracker';
 import { calculateBuildingWalkability, getWalkabilityBuildingsInRange, type BuildingWalkabilityScore } from '../data/buildingWalkability';
 import { DEFAULT_GRADIENT, GRADIENT_STORAGE_KEY, type HeatmapGradient } from '../config/gradientPresets';
+
+const DISABLED_STREETS_STORAGE_KEY = 'wolfsburg-disabled-streets';
+const ADDED_STREETS_STORAGE_KEY = 'wolfsburg-added-streets';
 import { GraphPartitioner } from '../data/partition/GraphPartitioner';
 import { IncrementalManager } from '../data/partition/IncrementalManager';
 import type { PartitionStats } from '../data/partition/types';
+
+export interface AddedStreetInfo {
+  key: string; // canonical: "lng1,lat1|lng2,lat2"
+  from: [number, number];
+  to: [number, number];
+}
+
+export interface DisabledStreetInfo {
+  fid: string;
+  segments: Array<{ from: [number, number]; to: [number, number]; streetClass?: string }>;
+  coordinates: [number, number][];
+  name?: string;
+  streetClass?: string;
+}
 
 export interface SelectedBuildingStats {
   building: Building;
@@ -127,6 +144,31 @@ interface FlowContextValue {
   hasPendingUpdates: boolean;
   isUpdating: boolean;
 
+  // Street segment editor — remove mode
+  disabledStreets: Map<string, DisabledStreetInfo>;
+  isRemoveMode: boolean;
+  toggleRemoveMode: () => void;
+  toggleStreet: (fid: string) => void;
+  restoreStreet: (fid: string) => void;
+  restoreAllStreets: () => void;
+
+  // Street segment editor — add mode
+  addedStreets: Map<string, AddedStreetInfo>;
+  isAddMode: boolean;
+  toggleAddMode: () => void;
+  addSegment: (from: [number, number], to: [number, number]) => void;
+  removeAddedSegment: (key: string) => void;
+  clearAllAddedSegments: () => void;
+
+  // Persistence
+  saveStreetEdits: () => void;
+  streetEditsUnsaved: boolean;
+
+  /** @deprecated use isRemoveMode */
+  isSegmentEditMode: boolean;
+  /** @deprecated use toggleRemoveMode */
+  toggleSegmentEditMode: () => void;
+
   // Partition stats (for debugging/display)
   getPartitionStats: () => PartitionStats | null;
   isPartitioningEnabled: boolean;
@@ -190,6 +232,15 @@ export function FlowProvider({ children }: { children: React.ReactNode }) {
   const [hasPendingUpdates, setHasPendingUpdates] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [isPartitioningEnabled, setIsPartitioningEnabled] = useState(false);
+
+  // Street segment editor state
+  const [disabledStreets, setDisabledStreets] = useState<Map<string, DisabledStreetInfo>>(new Map());
+  const [isRemoveMode, setIsRemoveModeState] = useState(false);
+  const [addedStreets, setAddedStreets] = useState<Map<string, AddedStreetInfo>>(new Map());
+  const [isAddMode, setIsAddModeState] = useState(false);
+  const [streetEditsUnsaved, setStreetEditsUnsaved] = useState(false);
+  // Index of all streets by fid, populated during initialization
+  const streetSegmentsRef = useRef<Map<string, DisabledStreetInfo>>(new Map());
 
   // Refs for imperative objects
   const flowCalculatorRef = useRef<FlowCalculator | null>(null);
@@ -396,6 +447,7 @@ export function FlowProvider({ children }: { children: React.ReactNode }) {
       }
 
       mapView.addHeatmapLayer();
+      mapView.addDisabledStreetsLayer();
       mapView.addPathPreviewLayer();
 
       const enrichedBuildings = enrichBuildingGeoJSON(buildingData, buildingStore);
@@ -431,6 +483,65 @@ export function FlowProvider({ children }: { children: React.ReactNode }) {
       if (streetData) {
         streetGraph.buildFromGeoJSON(streetData);
         console.log(`Street graph: ${streetGraph.nodeCount} nodes, ${streetGraph.edgeCount} edges`);
+
+        // Build fid → segment info index for the street editor
+        const segmentsMap = new Map<string, DisabledStreetInfo>();
+        for (const feature of streetData.features) {
+          if (feature.geometry.type !== 'LineString') continue;
+          const props = feature.properties as Record<string, unknown>;
+          const fid = String(props?.fid ?? props?.id ?? '');
+          if (!fid) continue;
+          const coords = feature.geometry.coordinates as [number, number][];
+          const segments: DisabledStreetInfo['segments'] = [];
+          for (let i = 0; i < coords.length - 1; i++) {
+            segments.push({
+              from: coords[i],
+              to: coords[i + 1],
+              streetClass: props?.class as string | undefined,
+            });
+          }
+          segmentsMap.set(fid, {
+            fid,
+            segments,
+            coordinates: coords,
+            name: props?.['names.primary'] as string | undefined,
+            streetClass: props?.class as string | undefined,
+          });
+        }
+        streetSegmentsRef.current = segmentsMap;
+
+        // Restore saved disabled streets
+        try {
+          const savedDisabled = localStorage.getItem(DISABLED_STREETS_STORAGE_KEY);
+          if (savedDisabled) {
+            const fids: string[] = JSON.parse(savedDisabled);
+            const restoredDisabled = new Map<string, DisabledStreetInfo>();
+            for (const fid of fids) {
+              const info = segmentsMap.get(fid);
+              if (info) {
+                for (const { from, to } of info.segments) {
+                  streetGraph.removeStreetEdge(from, to);
+                }
+                restoredDisabled.set(fid, info);
+              }
+            }
+            if (restoredDisabled.size > 0) setDisabledStreets(restoredDisabled);
+          }
+        } catch { /* ignore corrupt data */ }
+
+        // Restore saved added streets
+        try {
+          const savedAdded = localStorage.getItem(ADDED_STREETS_STORAGE_KEY);
+          if (savedAdded) {
+            const list: AddedStreetInfo[] = JSON.parse(savedAdded);
+            const restoredAdded = new Map<string, AddedStreetInfo>();
+            for (const seg of list) {
+              streetGraph.addStreetEdge(seg.from, seg.to);
+              restoredAdded.set(seg.key, seg);
+            }
+            if (restoredAdded.size > 0) setAddedStreets(restoredAdded);
+          }
+        } catch { /* ignore corrupt data */ }
       }
       streetGraphRef.current = streetGraph;
 
@@ -464,6 +575,46 @@ export function FlowProvider({ children }: { children: React.ReactNode }) {
 
       // Create legend
       createLegend();
+
+      // Wire up street segment click callback for edit mode
+      mapView.onSegmentClick = (fid) => {
+        // toggleStreet mutates streetGraph synchronously then triggers recalc
+        // We use the ref to avoid stale closure issues
+        const info = streetSegmentsRef.current.get(fid);
+        const graph = streetGraphRef.current;
+        if (!info || !graph) return;
+
+        setDisabledStreets(prev => {
+          const next = new Map(prev);
+          if (next.has(fid)) {
+            for (const { from, to, streetClass } of info.segments) {
+              graph.addStreetEdge(from, to, streetClass);
+            }
+            next.delete(fid);
+          } else {
+            for (const { from, to } of info.segments) {
+              graph.removeStreetEdge(from, to);
+            }
+            next.set(fid, info);
+          }
+          return next;
+        });
+      };
+
+      // Wire up add-segment callback
+      mapView.onAddSegment = (from, to) => {
+        const graph = streetGraphRef.current;
+        if (!graph) return;
+        graph.addStreetEdge(from, to);
+        const a = `${from[0].toFixed(6)},${from[1].toFixed(6)}`;
+        const b = `${to[0].toFixed(6)},${to[1].toFixed(6)}`;
+        const key = a < b ? `${a}|${b}` : `${b}|${a}`;
+        setAddedStreets(prev => {
+          const next = new Map(prev);
+          next.set(key, { key, from, to });
+          return next;
+        });
+      };
 
       // Wire up building click callback
       mapView.onBuildingClick = (buildingId, coordinates) => {
@@ -578,6 +729,45 @@ export function FlowProvider({ children }: { children: React.ReactNode }) {
 
     mapView.setMonochromeBuildings(monochromeBuildings);
   }, [monochromeBuildings, isLoading]);
+
+  // Sync disabled streets overlay and trigger recalculation when segments change
+  useEffect(() => {
+    const mapView = mapViewRef.current;
+    if (!mapView || isLoading) return;
+
+    const streets = Array.from(disabledStreets.values()).map(info => ({
+      fid: info.fid,
+      coordinates: info.coordinates,
+    }));
+    mapView.updateDisabledStreets(streets);
+
+    // Recalculate if we've already run a calculation
+    if (hasCalculated) {
+      recalculateFlows();
+    }
+  }, [disabledStreets, isLoading, hasCalculated, recalculateFlows]);
+
+  // Mark unsaved whenever edits change (skip initial mount while loading)
+  const isFirstRenderRef = useRef(true);
+  useEffect(() => {
+    if (isLoading) return;
+    if (isFirstRenderRef.current) { isFirstRenderRef.current = false; return; }
+    setStreetEditsUnsaved(true);
+  }, [disabledStreets, addedStreets, isLoading]);
+
+  // Sync added-streets overlay and trigger recalculation
+  useEffect(() => {
+    const mapView = mapViewRef.current;
+    if (!mapView || isLoading) return;
+    mapView.updateAddedStreets(Array.from(addedStreets.values()));
+    if (hasCalculated) recalculateFlows();
+  }, [addedStreets, isLoading, hasCalculated, recalculateFlows]);
+
+  // Sync edit mode on the map view (mutually exclusive modes)
+  useEffect(() => {
+    const mode = isRemoveMode ? 'remove' : isAddMode ? 'add' : 'none';
+    mapViewRef.current?.setEditMode(mode as 'none' | 'remove' | 'add');
+  }, [isRemoveMode, isAddMode]);
 
   // Compute path when preview points change
   useEffect(() => {
@@ -756,6 +946,121 @@ export function FlowProvider({ children }: { children: React.ReactNode }) {
     setIsUpdating(false);
   }, [hasPendingUpdates, hasCalculated, enabledLandUses, transportMode]);
 
+  // Street segment editor — remove mode actions
+  const toggleRemoveMode = useCallback(() => {
+    setIsRemoveModeState(prev => {
+      if (!prev) setIsAddModeState(false); // turn off add mode when enabling remove
+      return !prev;
+    });
+  }, []);
+  const toggleSegmentEditMode = toggleRemoveMode; // backward compat alias
+
+  // Street segment editor — add mode actions
+  const toggleAddMode = useCallback(() => {
+    setIsAddModeState(prev => {
+      if (!prev) setIsRemoveModeState(false); // turn off remove mode when enabling add
+      return !prev;
+    });
+  }, []);
+
+  const addSegment = useCallback((from: [number, number], to: [number, number]) => {
+    const graph = streetGraphRef.current;
+    if (!graph) return;
+    graph.addStreetEdge(from, to);
+    const a = `${from[0].toFixed(6)},${from[1].toFixed(6)}`;
+    const b = `${to[0].toFixed(6)},${to[1].toFixed(6)}`;
+    const key = a < b ? `${a}|${b}` : `${b}|${a}`;
+    setAddedStreets(prev => {
+      const next = new Map(prev);
+      next.set(key, { key, from, to });
+      return next;
+    });
+  }, []);
+
+  const removeAddedSegment = useCallback((key: string) => {
+    setAddedStreets(prev => {
+      const info = prev.get(key);
+      if (!info) return prev;
+      streetGraphRef.current?.removeStreetEdge(info.from, info.to);
+      const next = new Map(prev);
+      next.delete(key);
+      return next;
+    });
+  }, []);
+
+  const saveStreetEdits = useCallback(() => {
+    try {
+      const disabledFids = Array.from(disabledStreets.keys());
+      localStorage.setItem(DISABLED_STREETS_STORAGE_KEY, JSON.stringify(disabledFids));
+      const addedList = Array.from(addedStreets.values()).map(s => ({
+        key: s.key, from: s.from, to: s.to,
+      }));
+      localStorage.setItem(ADDED_STREETS_STORAGE_KEY, JSON.stringify(addedList));
+      setStreetEditsUnsaved(false);
+    } catch { /* ignore */ }
+  }, [disabledStreets, addedStreets]);
+
+  const clearAllAddedSegments = useCallback(() => {
+    setAddedStreets(prev => {
+      for (const info of prev.values()) {
+        streetGraphRef.current?.removeStreetEdge(info.from, info.to);
+      }
+      return new Map();
+    });
+  }, []);
+
+  const toggleStreet = useCallback((fid: string) => {
+    const info = streetSegmentsRef.current.get(fid);
+    const graph = streetGraphRef.current;
+    if (!info || !graph) return;
+
+    setDisabledStreets(prev => {
+      const next = new Map(prev);
+      if (next.has(fid)) {
+        for (const { from, to, streetClass } of info.segments) {
+          graph.addStreetEdge(from, to, streetClass);
+        }
+        next.delete(fid);
+      } else {
+        for (const { from, to } of info.segments) {
+          graph.removeStreetEdge(from, to);
+        }
+        next.set(fid, info);
+      }
+      return next;
+    });
+  }, []);
+
+  const restoreStreet = useCallback((fid: string) => {
+    const info = streetSegmentsRef.current.get(fid);
+    const graph = streetGraphRef.current;
+    if (!info || !graph) return;
+
+    setDisabledStreets(prev => {
+      if (!prev.has(fid)) return prev;
+      const next = new Map(prev);
+      for (const { from, to, streetClass } of info.segments) {
+        graph.addStreetEdge(from, to, streetClass);
+      }
+      next.delete(fid);
+      return next;
+    });
+  }, []);
+
+  const restoreAllStreets = useCallback(() => {
+    const graph = streetGraphRef.current;
+    if (!graph) return;
+
+    setDisabledStreets(prev => {
+      for (const info of prev.values()) {
+        for (const { from, to, streetClass } of info.segments) {
+          graph.addStreetEdge(from, to, streetClass);
+        }
+      }
+      return new Map();
+    });
+  }, []);
+
   const getPartitionStats = useCallback((): PartitionStats | null => {
     return partitionerRef.current?.getStats() ?? null;
   }, []);
@@ -818,6 +1123,23 @@ export function FlowProvider({ children }: { children: React.ReactNode }) {
     applyPendingUpdates,
     hasPendingUpdates,
     isUpdating,
+    disabledStreets,
+    isRemoveMode,
+    toggleRemoveMode,
+    toggleStreet,
+    restoreStreet,
+    restoreAllStreets,
+    addedStreets,
+    isAddMode,
+    toggleAddMode,
+    addSegment,
+    removeAddedSegment,
+    clearAllAddedSegments,
+    saveStreetEdits,
+    streetEditsUnsaved,
+    // deprecated aliases
+    isSegmentEditMode: isRemoveMode,
+    toggleSegmentEditMode,
     getPartitionStats,
     isPartitioningEnabled,
   };

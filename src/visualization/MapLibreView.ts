@@ -55,18 +55,59 @@ const OPEN_SPACE_TYPES = [
  * MapLibre GL JS wrapper for WebGL-accelerated map rendering.
  * Replaces Canvas 2D MapView for better pan/zoom performance.
  */
+// Map colors for each theme
+const MAP_COLORS = {
+  light: {
+    background: '#fafafa',
+    streetBase: '#ffffff',
+    streetShadow: 'rgba(0,0,0,0.06)',
+    water: '#a8d4e6',
+    vegetation: '#8fbc8f',
+    greenSpace: '#c8e6c9',
+    buildingOutline: 'rgba(0,0,0,0.18)',
+    undergroundFill: '#666666',
+    undergroundOutline: '#444444',
+    monochromeBuilding: '#d4d4d4',
+    monochromeWater: '#c8c8c8',
+    monochromeVegetation: '#e0e0e0',
+    monochromeGreenSpace: '#ebebeb',
+  },
+  dark: {
+    background: '#1a1a1a',
+    streetBase: '#c8bfa8',
+    streetShadow: 'rgba(0,0,0,0.5)',
+    water: '#1e4a6e',
+    vegetation: '#213d21',
+    greenSpace: '#1a3020',
+    buildingOutline: 'rgba(255,255,255,0.22)',
+    undergroundFill: '#909090',
+    undergroundOutline: '#b0b0b0',
+    monochromeBuilding: '#8c8c8c',
+    monochromeWater: '#555555',
+    monochromeVegetation: '#444444',
+    monochromeGreenSpace: '#3a3a3a',
+  },
+} as const;
+
 export class MapLibreView {
   public map: maplibregl.Map;
   public agentCanvas: HTMLCanvasElement;
   public agentCtx: CanvasRenderingContext2D;
 
   private container: HTMLElement;
+  private isDark = false;
+  private isMonochrome = false;
 
   // Callbacks
   public onViewChange: (() => void) | null = null;
   public onBuildingClick: ((buildingId: string, coordinates: [number, number]) => void) | null = null;
   public onLandmarkClick: ((landmarkId: string, coordinates: [number, number]) => void) | null = null;
+  public onSegmentClick: ((fid: string, name?: string) => void) | null = null;
+  public onAddSegment: ((from: [number, number], to: [number, number]) => void) | null = null;
 
+  // Edit mode: 'none' | 'remove' | 'add'
+  public editMode: 'none' | 'remove' | 'add' = 'none';
+  private pendingAddPoint: [number, number] | null = null;
   private landmarkMarkers: maplibregl.Marker[] = [];
 
   constructor(containerId: string) {
@@ -87,7 +128,7 @@ export class MapLibreView {
             id: 'background',
             type: 'background',
             paint: {
-              'background-color': '#fafafa',
+              'background-color': MAP_COLORS.light.background,
             },
           },
         ],
@@ -272,6 +313,192 @@ export class MapLibreView {
         'line-width': 2,
       },
     });
+  }
+
+  /**
+   * Add street-editor overlay layers and wire up all map interaction for
+   * both "remove" mode (click to disable an existing street) and
+   * "add" mode (click two points to draw a new segment).
+   * Call this after addHeatmapLayer so the overlays render on top.
+   */
+  addDisabledStreetsLayer(): void {
+    // ── Removed-streets source / layers (red dashed) ──────────────────────
+    this.map.addSource('disabled-streets', {
+      type: 'geojson',
+      data: { type: 'FeatureCollection', features: [] },
+    });
+    this.map.addLayer({
+      id: 'disabled-streets-glow',
+      type: 'line',
+      source: 'disabled-streets',
+      layout: { 'line-cap': 'round', 'line-join': 'round' },
+      paint: { 'line-color': '#ef4444', 'line-width': 8, 'line-opacity': 0.25 },
+    });
+    this.map.addLayer({
+      id: 'disabled-streets-line',
+      type: 'line',
+      source: 'disabled-streets',
+      layout: { 'line-cap': 'butt', 'line-join': 'round' },
+      paint: {
+        'line-color': '#ef4444',
+        'line-width': 2,
+        'line-opacity': 0.9,
+        'line-dasharray': [4, 3],
+      },
+    });
+
+    // ── Added-streets source / layers (green solid) ────────────────────────
+    this.map.addSource('added-streets', {
+      type: 'geojson',
+      data: { type: 'FeatureCollection', features: [] },
+    });
+    this.map.addLayer({
+      id: 'added-streets-glow',
+      type: 'line',
+      source: 'added-streets',
+      layout: { 'line-cap': 'round', 'line-join': 'round' },
+      paint: { 'line-color': '#22c55e', 'line-width': 8, 'line-opacity': 0.25 },
+    });
+    this.map.addLayer({
+      id: 'added-streets-line',
+      type: 'line',
+      source: 'added-streets',
+      layout: { 'line-cap': 'round', 'line-join': 'round' },
+      paint: { 'line-color': '#22c55e', 'line-width': 2.5, 'line-opacity': 0.95 },
+    });
+
+    // ── Pending first-click point for add-mode (yellow circle) ────────────
+    this.map.addSource('pending-point', {
+      type: 'geojson',
+      data: { type: 'FeatureCollection', features: [] },
+    });
+    this.map.addLayer({
+      id: 'pending-point-circle',
+      type: 'circle',
+      source: 'pending-point',
+      paint: {
+        'circle-radius': 7,
+        'circle-color': '#eab308',
+        'circle-stroke-color': '#ffffff',
+        'circle-stroke-width': 2,
+      },
+    });
+
+    // ── Map-level click handler (handles both modes) ───────────────────────
+    this.map.on('click', (e) => {
+      if (this.editMode === 'none') return;
+
+      const clickCoord: [number, number] = [e.lngLat.lng, e.lngLat.lat];
+
+      if (this.editMode === 'remove' && this.onSegmentClick) {
+        // Query with 10 px tolerance so thin lines are easy to hit
+        const pt = e.point;
+        const bbox: [maplibregl.PointLike, maplibregl.PointLike] = [
+          [pt.x - 10, pt.y - 10],
+          [pt.x + 10, pt.y + 10],
+        ];
+        const features = this.map.queryRenderedFeatures(bbox, { layers: ['street-base'] });
+        if (!features.length) return;
+        const fid = String(features[0].properties?.fid ?? '');
+        if (fid) {
+          this.onSegmentClick(fid, features[0].properties?.['names.primary'] as string | undefined);
+        }
+        return;
+      }
+
+      if (this.editMode === 'add' && this.onAddSegment) {
+        if (!this.pendingAddPoint) {
+          // First click — store point and show marker
+          this.pendingAddPoint = clickCoord;
+          this._updatePendingPoint(clickCoord);
+        } else {
+          // Second click — commit segment, clear marker
+          this.onAddSegment(this.pendingAddPoint, clickCoord);
+          this.pendingAddPoint = null;
+          this._updatePendingPoint(null);
+        }
+      }
+    });
+
+    // ── Cursor feedback via mousemove ─────────────────────────────────────
+    this.map.on('mousemove', (e) => {
+      if (this.editMode === 'none') return;
+
+      if (this.editMode === 'add') {
+        this.map.getCanvas().style.cursor = 'crosshair';
+        return;
+      }
+
+      // Remove mode: crosshair only when over a street
+      const pt = e.point;
+      const bbox: [maplibregl.PointLike, maplibregl.PointLike] = [
+        [pt.x - 10, pt.y - 10],
+        [pt.x + 10, pt.y + 10],
+      ];
+      const features = this.map.queryRenderedFeatures(bbox, { layers: ['street-base'] });
+      this.map.getCanvas().style.cursor = features.length ? 'crosshair' : 'default';
+    });
+  }
+
+  /** Show or hide the pending first-click marker. */
+  private _updatePendingPoint(coord: [number, number] | null): void {
+    const source = this.map.getSource('pending-point') as maplibregl.GeoJSONSource;
+    if (!source) return;
+    source.setData({
+      type: 'FeatureCollection',
+      features: coord
+        ? [{ type: 'Feature', properties: {}, geometry: { type: 'Point', coordinates: coord } }]
+        : [],
+    });
+  }
+
+  /**
+   * Update the disabled-streets overlay.
+   */
+  updateDisabledStreets(streets: Array<{ fid: string; coordinates: [number, number][] }>): void {
+    const source = this.map.getSource('disabled-streets') as maplibregl.GeoJSONSource;
+    if (!source) return;
+    source.setData({
+      type: 'FeatureCollection',
+      features: streets.map(s => ({
+        type: 'Feature' as const,
+        properties: { fid: s.fid },
+        geometry: { type: 'LineString' as const, coordinates: s.coordinates },
+      })),
+    });
+  }
+
+  /**
+   * Update the added-streets overlay.
+   */
+  updateAddedStreets(streets: Array<{ key: string; from: [number, number]; to: [number, number] }>): void {
+    const source = this.map.getSource('added-streets') as maplibregl.GeoJSONSource;
+    if (!source) return;
+    source.setData({
+      type: 'FeatureCollection',
+      features: streets.map(s => ({
+        type: 'Feature' as const,
+        properties: { key: s.key },
+        geometry: { type: 'LineString' as const, coordinates: [s.from, s.to] },
+      })),
+    });
+  }
+
+  /**
+   * Set edit mode. Clears pending add-point and resets cursor.
+   */
+  setEditMode(mode: 'none' | 'remove' | 'add'): void {
+    this.editMode = mode;
+    this.pendingAddPoint = null;
+    this._updatePendingPoint(null);
+    if (mode === 'none') {
+      this.map.getCanvas().style.cursor = '';
+    }
+  }
+
+  /** @deprecated use setEditMode */
+  setSegmentEditMode(enabled: boolean): void {
+    this.setEditMode(enabled ? 'remove' : 'none');
   }
 
   /**
@@ -631,6 +858,17 @@ export class MapLibreView {
       LAND_USE_COLORS['Undefined Land use'], // fallback
     ] as maplibregl.ExpressionSpecification;
 
+    // Flat fill layer used only for footprint outlines — gives building definition
+    this.map.addLayer({
+      id: 'buildings-footprint',
+      type: 'fill',
+      source: 'buildings',
+      paint: {
+        'fill-color': 'rgba(0,0,0,0)',
+        'fill-outline-color': MAP_COLORS.light.buildingOutline,
+      },
+    });
+
     // 3D extruded buildings based on Height property from GeoJSON
     // Height is stored as string in GeoJSON, convert to number
     this.map.addLayer({
@@ -922,23 +1160,23 @@ export class MapLibreView {
    * Set buildings and natural elements to monochrome (gray) mode for better heatmap readability.
    */
   setMonochromeBuildings(monochrome: boolean): void {
+    this.isMonochrome = monochrome;
+    const c = this.isDark ? MAP_COLORS.dark : MAP_COLORS.light;
+
     if (monochrome) {
-      // Set all buildings to neutral gray
       if (this.map.getLayer('buildings-fill')) {
-        this.map.setPaintProperty('buildings-fill', 'fill-extrusion-color', '#d4d4d4');
+        this.map.setPaintProperty('buildings-fill', 'fill-extrusion-color', c.monochromeBuilding);
       }
-      // Set natural elements to gray tones
       if (this.map.getLayer('water-fill')) {
-        this.map.setPaintProperty('water-fill', 'fill-color', '#c8c8c8');
+        this.map.setPaintProperty('water-fill', 'fill-color', c.monochromeWater);
       }
       if (this.map.getLayer('vegetation-fill')) {
-        this.map.setPaintProperty('vegetation-fill', 'fill-color', '#e0e0e0');
+        this.map.setPaintProperty('vegetation-fill', 'fill-color', c.monochromeVegetation);
       }
       if (this.map.getLayer('green-space-fill')) {
-        this.map.setPaintProperty('green-space-fill', 'fill-color', '#ebebeb');
+        this.map.setPaintProperty('green-space-fill', 'fill-color', c.monochromeGreenSpace);
       }
     } else {
-      // Restore data-driven land use colors for buildings
       if (this.map.getLayer('buildings-fill')) {
         const colorMatchExpression = [
           'match',
@@ -963,16 +1201,76 @@ export class MapLibreView {
         ] as maplibregl.ExpressionSpecification;
         this.map.setPaintProperty('buildings-fill', 'fill-extrusion-color', colorMatchExpression);
       }
-      // Restore natural element colors
       if (this.map.getLayer('water-fill')) {
-        this.map.setPaintProperty('water-fill', 'fill-color', '#a8d4e6');
+        this.map.setPaintProperty('water-fill', 'fill-color', c.water);
       }
       if (this.map.getLayer('vegetation-fill')) {
-        this.map.setPaintProperty('vegetation-fill', 'fill-color', '#8fbc8f');
+        this.map.setPaintProperty('vegetation-fill', 'fill-color', c.vegetation);
       }
       if (this.map.getLayer('green-space-fill')) {
-        this.map.setPaintProperty('green-space-fill', 'fill-color', '#c8e6c9');
+        this.map.setPaintProperty('green-space-fill', 'fill-color', c.greenSpace);
       }
+    }
+  }
+
+  /**
+   * Switch the map between dark and light visual themes.
+   * Updates background, streets, natural elements, and building outlines.
+   */
+  setDarkMode(isDark: boolean): void {
+    this.isDark = isDark;
+    const c = isDark ? MAP_COLORS.dark : MAP_COLORS.light;
+
+    // Background
+    if (this.map.getLayer('background')) {
+      this.map.setPaintProperty('background', 'background-color', c.background);
+    }
+
+    // Streets
+    if (this.map.getLayer('street-base')) {
+      this.map.setPaintProperty('street-base', 'line-color', c.streetBase);
+    }
+    if (this.map.getLayer('street-shadow')) {
+      this.map.setPaintProperty('street-shadow', 'line-color', c.streetShadow);
+    }
+
+    // Building footprint outlines
+    if (this.map.getLayer('buildings-footprint')) {
+      this.map.setPaintProperty('buildings-footprint', 'fill-outline-color', c.buildingOutline);
+    }
+
+    // Natural elements — also respects monochrome mode
+    if (this.isMonochrome) {
+      if (this.map.getLayer('water-fill')) {
+        this.map.setPaintProperty('water-fill', 'fill-color', c.monochromeWater);
+      }
+      if (this.map.getLayer('vegetation-fill')) {
+        this.map.setPaintProperty('vegetation-fill', 'fill-color', c.monochromeVegetation);
+      }
+      if (this.map.getLayer('green-space-fill')) {
+        this.map.setPaintProperty('green-space-fill', 'fill-color', c.monochromeGreenSpace);
+      }
+      if (this.map.getLayer('buildings-fill')) {
+        this.map.setPaintProperty('buildings-fill', 'fill-extrusion-color', c.monochromeBuilding);
+      }
+    } else {
+      if (this.map.getLayer('water-fill')) {
+        this.map.setPaintProperty('water-fill', 'fill-color', c.water);
+      }
+      if (this.map.getLayer('vegetation-fill')) {
+        this.map.setPaintProperty('vegetation-fill', 'fill-color', c.vegetation);
+      }
+      if (this.map.getLayer('green-space-fill')) {
+        this.map.setPaintProperty('green-space-fill', 'fill-color', c.greenSpace);
+      }
+    }
+
+    // Underground buildings
+    if (this.map.getLayer('buildings-underground-fill')) {
+      this.map.setPaintProperty('buildings-underground-fill', 'fill-color', c.undergroundFill);
+    }
+    if (this.map.getLayer('buildings-underground-outline')) {
+      this.map.setPaintProperty('buildings-underground-outline', 'line-color', c.undergroundOutline);
     }
   }
 

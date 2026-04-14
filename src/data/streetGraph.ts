@@ -255,7 +255,7 @@ export class StreetGraph {
    * Adds nodes if they don't exist and creates bidirectional edges.
    * Notifies listeners of the change.
    */
-  addStreetEdge(from: [number, number], to: [number, number]): void {
+  addStreetEdge(from: [number, number], to: [number, number], streetClass?: string): void {
     const fromKey = coordKey(from);
     const toKey = coordKey(to);
 
@@ -291,8 +291,8 @@ export class StreetGraph {
     const distance = haversineDistance(from, to);
 
     // Add bidirectional edges
-    const edgeAdded1 = this.addEdgeInternal(fromKey, toKey, distance);
-    const edgeAdded2 = this.addEdgeInternal(toKey, fromKey, distance);
+    const edgeAdded1 = this.addEdgeInternal(fromKey, toKey, distance, streetClass);
+    const edgeAdded2 = this.addEdgeInternal(toKey, fromKey, distance, streetClass);
 
     // Notify listeners
     if (fromNodeAdded) {

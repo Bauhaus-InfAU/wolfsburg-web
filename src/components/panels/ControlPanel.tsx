@@ -7,6 +7,8 @@ import { VisualizationToggles } from './VisualizationToggles';
 import { StatsDisplay } from './StatsDisplay';
 import { CalculateButton } from './CalculateButton';
 import { TransportModeSelector } from './TransportModeSelector';
+import { SegmentEditor } from './SegmentEditor';
+import { ThemeToggle } from '@/components/ThemeToggle';
 
 const MIN_WIDTH = 300;
 const MAX_WIDTH = 500;
@@ -64,9 +66,13 @@ export function ControlPanel() {
           <div>
           {/* Header */}
           <div className="sticky top-0 bg-card/95 backdrop-blur-sm z-10 px-5 py-4 border-b border-border">
-            <h1 className="text-sm font-semibold text-foreground text-center">
-              Wolfsburg Flow Model
-            </h1>
+            <div className="flex items-center justify-between">
+              <div className="w-7" />
+              <h1 className="text-sm font-semibold text-foreground text-center">
+                Wolfsburg Flow Model
+              </h1>
+              <ThemeToggle className="h-7 w-7 rounded-lg" />
+            </div>
           </div>
 
           <div className="p-4 space-y-1">
@@ -89,6 +95,11 @@ export function ControlPanel() {
             {/* Display Options */}
             <CollapsibleSection title="Display Options" defaultOpen>
               <VisualizationToggles />
+            </CollapsibleSection>
+
+            {/* Street Segment Editor */}
+            <CollapsibleSection title="Street Segments" defaultOpen={false}>
+              <SegmentEditor />
             </CollapsibleSection>
 
             {/* Land Use Filters */}
