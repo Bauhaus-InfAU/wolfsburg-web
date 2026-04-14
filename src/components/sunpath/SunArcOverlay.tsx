@@ -37,9 +37,9 @@ export function SunArcOverlay() {
   const lat = cfg.center[1];
   const lng = cfg.center[0];
 
-  // Full-day arc (every 2 min for smoother curve), memoised on date
+  // Full-day arc (every 5 min), memoised on date
   const arc = useMemo(
-    () => getSunArc(currentDate, lat, lng, 2),
+    () => getSunArc(currentDate, lat, lng, 5),
     [currentDate, lat, lng],
   );
 
@@ -70,13 +70,12 @@ export function SunArcOverlay() {
 
   if (!showSunPath) return null;
 
-  // Build SVG path for above-horizon portion of the arc.
-  // Use -0.5° threshold to avoid flickering near the exact horizon crossing.
+  // Build SVG path for above-horizon portion of the arc
   const pathParts: string[] = [];
   let cmd = 'M';
   for (const p of arc) {
-    if (p.elevation < -0.5) { cmd = 'M'; continue; }
-    const [x, y] = toXY(p.azimuth, Math.max(0, p.elevation));
+    if (p.elevation < 0) { cmd = 'M'; continue; }
+    const [x, y] = toXY(p.azimuth, p.elevation);
     pathParts.push(`${cmd}${x.toFixed(1)},${y.toFixed(1)}`);
     cmd = 'L';
   }
