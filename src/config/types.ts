@@ -146,16 +146,7 @@ export interface TransitStop {
   lat: number;
   lng: number;
   distance?: number; // meters from search point
-  departures?: TransitDeparture[];
-}
-
-export interface TransitDeparture {
-  line: string;
-  direction: string;
-  when: string; // ISO date string (actual departure, includes delay)
-  plannedWhen: string; // ISO date string (scheduled)
-  delay: number | null; // seconds
-  platform?: string | null;
+  lines?: string[];  // bus/tram line numbers from OSM route_ref tag
 }
 
 // Re-export partition types for convenience
