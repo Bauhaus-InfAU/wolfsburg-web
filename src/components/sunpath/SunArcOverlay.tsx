@@ -1,5 +1,6 @@
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useSunPath } from '@/context/SunPathContext';
+import { useSimulation } from '@/hooks/useSimulation';
 import { getSunArc, getSunPosition, getSunTimes } from '@/simulation/sunPosition';
 import { getCityConfig } from '@/config/cityConfig';
 
@@ -31,7 +32,20 @@ const COMPASS = [
 ];
 
 export function SunArcOverlay() {
-  const { minuteOfDay, currentDate, showSunPath } = useSunPath();
+  const { minuteOfDay, currentDate, showSunPath, panelOpen } = useSunPath();
+  const { getMapView } = useSimulation();
+
+  // Track map bearing so the compass rotates with the map
+  const [bearing, setBearing] = useState(0);
+  useEffect(() => {
+    const mapView = getMapView();
+    if (!mapView?.map) return;
+    const map = mapView.map;
+    const onRotate = () => setBearing(map.getBearing());
+    map.on('rotate', onRotate);
+    setBearing(map.getBearing());
+    return () => { map.off('rotate', onRotate); };
+  }, [getMapView]);
 
   const cfg = getCityConfig();
   const lat = cfg.center[1];
@@ -68,7 +82,7 @@ export function SunArcOverlay() {
   const sun   = getSunPosition(simDate, lat, lng);
   const times = getSunTimes(currentDate, lat, lng);
 
-  if (!showSunPath) return null;
+  if (!showSunPath || !panelOpen) return null;
 
   // Build SVG path for above-horizon portion of the arc
   const pathParts: string[] = [];
@@ -91,11 +105,12 @@ export function SunArcOverlay() {
       <div className="bg-card/80 backdrop-blur-sm rounded-xl border border-border shadow-lg p-1">
         <svg width={SVG_W} height={SVG_H} viewBox={`0 0 ${SVG_W} ${SVG_H}`}>
           <defs>
-            {/* Clip arc and hour ticks to the inside of the horizon circle */}
             <clipPath id="sunpath-horizon-clip">
               <circle cx={CX} cy={CY} r={R} />
             </clipPath>
           </defs>
+          {/* Rotate the whole diagram to match the map bearing */}
+          <g transform={`rotate(${bearing}, ${CX}, ${CY})`}>
 
           {/* Altitude rings at 30° and 60° */}
           {[30, 60].map(e => (
@@ -204,6 +219,7 @@ export function SunArcOverlay() {
               🌙
             </text>
           )}
+          </g>
         </svg>
 
         {/* Sunrise / sunset row */}

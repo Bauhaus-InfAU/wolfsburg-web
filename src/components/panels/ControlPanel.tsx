@@ -12,12 +12,14 @@ import { ThemeToggle } from '@/components/ThemeToggle';
 import { PublicTransportPanel } from './PublicTransportPanel';
 import { LiveTrafficPanel } from './LiveTrafficPanel';
 import { SunPathContent } from '@/components/sunpath/SunPathPanel';
+import { useSunPath } from '@/context/SunPathContext';
 
 const MIN_WIDTH = 300;
 const MAX_WIDTH = 500;
 const DEFAULT_WIDTH = 360;
 
 export function ControlPanel() {
+  const { setPanelOpen } = useSunPath();
   const [width, setWidth] = useState(DEFAULT_WIDTH);
   const [isResizing, setIsResizing] = useState(false);
 
@@ -121,7 +123,7 @@ export function ControlPanel() {
             </CollapsibleSection>
 
             {/* Sun Path */}
-            <CollapsibleSection title="Sun Path" defaultOpen={false}>
+            <CollapsibleSection title="Sun Path" defaultOpen={false} onOpenChange={setPanelOpen}>
               <SunPathContent />
             </CollapsibleSection>
           </div>
@@ -144,15 +146,22 @@ function CollapsibleSection({
   title,
   children,
   defaultOpen = true,
+  onOpenChange,
 }: {
   title: string;
   children: React.ReactNode;
   defaultOpen?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }) {
   const [isOpen, setIsOpen] = useState(defaultOpen);
 
+  const handleOpenChange = (open: boolean) => {
+    setIsOpen(open);
+    onOpenChange?.(open);
+  };
+
   return (
-    <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+    <Collapsible open={isOpen} onOpenChange={handleOpenChange}>
       <CollapsibleTrigger className="flex items-center justify-between w-full px-3 py-2 rounded-lg hover:bg-accent/50 transition-colors group">
         <span className="text-xs font-medium text-foreground">{title}</span>
         <ChevronDown
