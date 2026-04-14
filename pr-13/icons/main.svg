@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+  <g id="b" data-name="Layer 2">
+    <g>
+      <path d="M12,23.5C5.66,23.5.5,18.34.5,12S5.66.5,12,.5s11.5,5.16,11.5,11.5-5.16,11.5-11.5,11.5Z" style="fill: #e78262;"/>
+      <path d="M12,1c6.07,0,11,4.93,11,11s-4.93,11-11,11S1,18.07,1,12,5.93,1,12,1M12,0h0C5.37,0,0,5.37,0,12h0c0,6.63,5.37,12,12,12h0c6.63,0,12-5.37,12-12h0C24,5.37,18.63,0,12,0h0Z" style="fill: #e78262;"/>
+    </g>
+  </g>
+  <g id="c" data-name="Layer 1">
+    <line x1="24" y1="12" y2="12" style="fill: none; stroke: #fff; stroke-miterlimit: 10; stroke-width: 2px;"/>
+    <line x1="3.51" y1="3.51" x2="20.49" y2="20.49" style="fill: none; stroke: #fff; stroke-miterlimit: 10; stroke-width: 2px;"/>
+    <line x1="20.49" y1="3.51" x2="3.51" y2="20.49" style="fill: none; stroke: #fff; stroke-miterlimit: 10; stroke-width: 2px;"/>
+    <path d="M12,2c5.51,0,10,4.49,10,10s-4.49,10-10,10S2,17.51,2,12,6.49,2,12,2M12,0h0C5.37,0,0,5.37,0,12h0c0,6.63,5.37,12,12,12h0c6.63,0,12-5.37,12-12h0C24,5.37,18.63,0,12,0h0Z" style="fill: #e78262;"/>
+  </g>
+</svg>
