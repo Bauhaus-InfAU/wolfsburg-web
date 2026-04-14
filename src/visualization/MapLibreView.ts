@@ -1,4 +1,5 @@
 import maplibregl from 'maplibre-gl';
+import type GeoJSON from 'geojson';
 import type { LandUse, BuildingCollection, StreetCollection } from '../config/types';
 import type { SegmentUsage } from '../data/StreetUsageTracker';
 import type { BlockCollection } from '../data/dataLoader';
@@ -91,6 +92,8 @@ export class MapLibreView {
   public onSegmentClick: ((fid: string) => void) | null = null;
   public onAddSegment: ((from: [number, number], to: [number, number]) => void) | null = null;
   public onLandmarkClick: ((landmarkId: string) => void) | null = null;
+  public onCustomBuildingClick: ((id: string) => void) | null = null;
+  public onCustomBuildingContextMenu: ((id: string, pos: [number, number]) => void) | null = null;
 
   private editMode: 'none' | 'remove' | 'add' = 'none';
   private addSegmentStart: [number, number] | null = null;
@@ -1138,5 +1141,173 @@ export class MapLibreView {
   getContainerSize(): { width: number; height: number } {
     const rect = this.container.getBoundingClientRect();
     return { width: rect.width, height: rect.height };
+  }
+
+  /**
+   * Add a source + fill-extrusion layer for user-drawn buildings.
+   * Uses data-driven color based on `landUse` property.
+   * Safe to call multiple times — skips if already added.
+   */
+  addCustomBuildingsLayer(): void {
+    if (this.map.getSource('custom-buildings')) return;
+
+    this.map.addSource('custom-buildings', {
+      type: 'geojson',
+      data: { type: 'FeatureCollection', features: [] },
+    });
+
+    // Data-driven color using the same land-use palette as existing buildings
+    const colorMatch = [
+      'match',
+      ['get', 'landUse'],
+      'Generic Residential',              LAND_USE_COLORS['Generic Residential'],
+      'Generic Retail',                   LAND_USE_COLORS['Generic Retail'],
+      'Generic Food and Beverage Service',LAND_USE_COLORS['Generic Food and Beverage Service'],
+      'Generic Entertainment',            LAND_USE_COLORS['Generic Entertainment'],
+      'Generic Service',                  LAND_USE_COLORS['Generic Service'],
+      'Generic Health and Wellbeing',     LAND_USE_COLORS['Generic Health and Wellbeing'],
+      'Generic Education',                LAND_USE_COLORS['Generic Education'],
+      'Generic Office Building',          LAND_USE_COLORS['Generic Office Building'],
+      'Generic Culture',                  LAND_USE_COLORS['Generic Culture'],
+      'Generic Civic Function',           LAND_USE_COLORS['Generic Civic Function'],
+      'Generic Sport Facility',           LAND_USE_COLORS['Generic Sport Facility'],
+      'Generic Light Industrial',         LAND_USE_COLORS['Generic Light Industrial'],
+      'Generic Accommodation',            LAND_USE_COLORS['Generic Accommodation'],
+      'Generic Transportation Service',   LAND_USE_COLORS['Generic Transportation Service'],
+      'Generic Utilities',                LAND_USE_COLORS['Generic Utilities'],
+      'Undefined Land use',               LAND_USE_COLORS['Undefined Land use'],
+      '#f57f5b', // fallback
+    ] as maplibregl.ExpressionSpecification;
+
+    this.map.addLayer({
+      id: 'custom-buildings-fill',
+      type: 'fill-extrusion',
+      source: 'custom-buildings',
+      paint: {
+        'fill-extrusion-color': colorMatch,
+        'fill-extrusion-height': ['get', 'height'],
+        'fill-extrusion-base': 0,
+        'fill-extrusion-opacity': 0.9,
+      },
+    });
+
+    // Click to select
+    this.map.on('click', 'custom-buildings-fill', (e) => {
+      const id = e.features?.[0]?.properties?.id as string | undefined;
+      if (id) this.onCustomBuildingClick?.(id);
+    });
+
+    // Right-click context menu
+    this.map.on('contextmenu', 'custom-buildings-fill', (e) => {
+      e.preventDefault();
+      const id = e.features?.[0]?.properties?.id as string | undefined;
+      if (id) this.onCustomBuildingContextMenu?.(id, [e.point.x, e.point.y]);
+    });
+
+    // Cursor feedback
+    this.map.on('mouseenter', 'custom-buildings-fill', () => {
+      this.map.getCanvas().style.cursor = 'pointer';
+    });
+    this.map.on('mouseleave', 'custom-buildings-fill', () => {
+      this.map.getCanvas().style.cursor = '';
+    });
+  }
+
+  // ─── Sun path / shadow methods ───────────────────────────────────────────────
+
+  /**
+   * Add a flat fill layer for building shadows.
+   * Must be called after the map is loaded. Safe to call multiple times.
+   */
+  addShadowLayer(): void {
+    if (this.map.getSource('building-shadows')) return;
+
+    this.map.addSource('building-shadows', {
+      type: 'geojson',
+      data: { type: 'FeatureCollection', features: [] },
+    });
+
+    // Insert below buildings so shadows render on the ground
+    const beforeId = this.map.getLayer('buildings-fill') ? 'buildings-fill' : undefined;
+
+    this.map.addLayer({
+      id: 'building-shadows-fill',
+      type: 'fill',
+      source: 'building-shadows',
+      paint: {
+        'fill-color': '#1a1a2e',
+        'fill-opacity': 0.35,
+        'fill-antialias': false,
+      },
+    }, beforeId);
+  }
+
+  /** Replace the shadow polygon GeoJSON data. */
+  updateShadows(features: GeoJSON.Feature[]): void {
+    const source = this.map.getSource('building-shadows') as maplibregl.GeoJSONSource;
+    if (!source) return;
+    source.setData({ type: 'FeatureCollection', features });
+  }
+
+  /**
+   * Set shadow layer opacity.
+   */
+  setShadowOpacity(opacity: number): void {
+    if (this.map.getLayer('building-shadows-fill')) {
+      this.map.setPaintProperty('building-shadows-fill', 'fill-opacity', opacity);
+    }
+  }
+
+  /** Show or hide the shadow layer. */
+  setShadowVisibility(visible: boolean): void {
+    this.setLayerVisibility('building-shadows-fill', visible);
+  }
+
+  /**
+   * Set directional lighting to match the sun position.
+   * azimuth: degrees from north, clockwise (0–360)
+   * elevation: degrees above horizon (-90–90)
+   */
+  setSunLight(azimuth: number, elevation: number): void {
+    // MapLibre light position: [radial, azimuthal (from south CW°), polar (from nadir°)]
+    const phi   = (azimuth + 180) % 360;          // azimuthal: south-referenced
+    const theta = 90 - Math.max(0, elevation);     // polar: nadir-referenced
+
+    // Warm golden color at low angles, neutral white overhead
+    let color = '#ffffff';
+    if (elevation <= 0)        color = '#2d3561';   // night: deep blue
+    else if (elevation < 10)   color = '#ff9966';   // golden hour
+    else if (elevation < 25)   color = '#fff0d0';   // morning / evening
+    // else: daylight white
+
+    const intensity = elevation <= 0
+      ? 0.15
+      : 0.25 + Math.min(0.55, (elevation / 70) * 0.55);
+
+    this.map.setLight({
+      anchor: 'map',
+      color,
+      intensity,
+      position: [1.15, phi, theta],
+    } as maplibregl.LightSpecification);
+  }
+
+  /**
+   * Sync user-drawn buildings to the custom-buildings layer.
+   */
+  updateCustomBuildings(buildings: Array<{ id: string; points: [number, number][]; height: number; landUse: string }>): void {
+    const source = this.map.getSource('custom-buildings') as maplibregl.GeoJSONSource;
+    if (!source) return;
+
+    const features = buildings.map(b => ({
+      type: 'Feature' as const,
+      properties: { id: b.id, height: b.height, landUse: b.landUse },
+      geometry: {
+        type: 'Polygon' as const,
+        coordinates: [[...b.points, b.points[0]]],
+      },
+    }));
+
+    source.setData({ type: 'FeatureCollection', features });
   }
 }
