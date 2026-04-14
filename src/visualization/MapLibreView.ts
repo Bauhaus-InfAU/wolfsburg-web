@@ -32,12 +32,48 @@ const GREEN_SPACE_TYPES = [
  * MapLibre GL JS wrapper for WebGL-accelerated map rendering.
  * Replaces Canvas 2D MapView for better pan/zoom performance.
  */
+// Map colors for each theme
+const MAP_COLORS = {
+  light: {
+    background: '#fafafa',
+    streetBase: '#ffffff',
+    streetShadow: 'rgba(0,0,0,0.06)',
+    water: '#a8d4e6',
+    vegetation: '#8fbc8f',
+    greenSpace: '#c8e6c9',
+    buildingOutline: 'rgba(0,0,0,0.18)',
+    undergroundFill: '#666666',
+    undergroundOutline: '#444444',
+    monochromeBuilding: '#d4d4d4',
+    monochromeWater: '#c8c8c8',
+    monochromeVegetation: '#e0e0e0',
+    monochromeGreenSpace: '#ebebeb',
+  },
+  dark: {
+    background: '#1a1a1a',
+    streetBase: '#c8bfa8',
+    streetShadow: 'rgba(0,0,0,0.5)',
+    water: '#1e4a6e',
+    vegetation: '#213d21',
+    greenSpace: '#1a3020',
+    buildingOutline: 'rgba(255,255,255,0.22)',
+    undergroundFill: '#909090',
+    undergroundOutline: '#b0b0b0',
+    monochromeBuilding: '#8c8c8c',
+    monochromeWater: '#555555',
+    monochromeVegetation: '#444444',
+    monochromeGreenSpace: '#3a3a3a',
+  },
+} as const;
+
 export class MapLibreView {
   public map: maplibregl.Map;
   public agentCanvas: HTMLCanvasElement;
   public agentCtx: CanvasRenderingContext2D;
 
   private container: HTMLElement;
+  private isDark = false;
+  private isMonochrome = false;
 
   // Callbacks
   public onViewChange: (() => void) | null = null;
@@ -61,7 +97,7 @@ export class MapLibreView {
             id: 'background',
             type: 'background',
             paint: {
-              'background-color': '#fafafa',
+              'background-color': MAP_COLORS.light.background,
             },
           },
         ],
@@ -549,6 +585,17 @@ export class MapLibreView {
       LAND_USE_COLORS['Undefined Land use'], // fallback
     ] as maplibregl.ExpressionSpecification;
 
+    // Flat fill layer used only for footprint outlines — gives building definition
+    this.map.addLayer({
+      id: 'buildings-footprint',
+      type: 'fill',
+      source: 'buildings',
+      paint: {
+        'fill-color': 'rgba(0,0,0,0)',
+        'fill-outline-color': MAP_COLORS.light.buildingOutline,
+      },
+    });
+
     // 3D extruded buildings based on Height property from GeoJSON
     // Height is stored as string in GeoJSON, convert to number
     this.map.addLayer({
@@ -770,23 +817,23 @@ export class MapLibreView {
    * Set buildings and natural elements to monochrome (gray) mode for better heatmap readability.
    */
   setMonochromeBuildings(monochrome: boolean): void {
+    this.isMonochrome = monochrome;
+    const c = this.isDark ? MAP_COLORS.dark : MAP_COLORS.light;
+
     if (monochrome) {
-      // Set all buildings to neutral gray
       if (this.map.getLayer('buildings-fill')) {
-        this.map.setPaintProperty('buildings-fill', 'fill-extrusion-color', '#d4d4d4');
+        this.map.setPaintProperty('buildings-fill', 'fill-extrusion-color', c.monochromeBuilding);
       }
-      // Set natural elements to gray tones
       if (this.map.getLayer('water-fill')) {
-        this.map.setPaintProperty('water-fill', 'fill-color', '#c8c8c8');
+        this.map.setPaintProperty('water-fill', 'fill-color', c.monochromeWater);
       }
       if (this.map.getLayer('vegetation-fill')) {
-        this.map.setPaintProperty('vegetation-fill', 'fill-color', '#e0e0e0');
+        this.map.setPaintProperty('vegetation-fill', 'fill-color', c.monochromeVegetation);
       }
       if (this.map.getLayer('green-space-fill')) {
-        this.map.setPaintProperty('green-space-fill', 'fill-color', '#ebebeb');
+        this.map.setPaintProperty('green-space-fill', 'fill-color', c.monochromeGreenSpace);
       }
     } else {
-      // Restore data-driven land use colors for buildings
       if (this.map.getLayer('buildings-fill')) {
         const colorMatchExpression = [
           'match',
@@ -811,16 +858,76 @@ export class MapLibreView {
         ] as maplibregl.ExpressionSpecification;
         this.map.setPaintProperty('buildings-fill', 'fill-extrusion-color', colorMatchExpression);
       }
-      // Restore natural element colors
       if (this.map.getLayer('water-fill')) {
-        this.map.setPaintProperty('water-fill', 'fill-color', '#a8d4e6');
+        this.map.setPaintProperty('water-fill', 'fill-color', c.water);
       }
       if (this.map.getLayer('vegetation-fill')) {
-        this.map.setPaintProperty('vegetation-fill', 'fill-color', '#8fbc8f');
+        this.map.setPaintProperty('vegetation-fill', 'fill-color', c.vegetation);
       }
       if (this.map.getLayer('green-space-fill')) {
-        this.map.setPaintProperty('green-space-fill', 'fill-color', '#c8e6c9');
+        this.map.setPaintProperty('green-space-fill', 'fill-color', c.greenSpace);
       }
+    }
+  }
+
+  /**
+   * Switch the map between dark and light visual themes.
+   * Updates background, streets, natural elements, and building outlines.
+   */
+  setDarkMode(isDark: boolean): void {
+    this.isDark = isDark;
+    const c = isDark ? MAP_COLORS.dark : MAP_COLORS.light;
+
+    // Background
+    if (this.map.getLayer('background')) {
+      this.map.setPaintProperty('background', 'background-color', c.background);
+    }
+
+    // Streets
+    if (this.map.getLayer('street-base')) {
+      this.map.setPaintProperty('street-base', 'line-color', c.streetBase);
+    }
+    if (this.map.getLayer('street-shadow')) {
+      this.map.setPaintProperty('street-shadow', 'line-color', c.streetShadow);
+    }
+
+    // Building footprint outlines
+    if (this.map.getLayer('buildings-footprint')) {
+      this.map.setPaintProperty('buildings-footprint', 'fill-outline-color', c.buildingOutline);
+    }
+
+    // Natural elements — also respects monochrome mode
+    if (this.isMonochrome) {
+      if (this.map.getLayer('water-fill')) {
+        this.map.setPaintProperty('water-fill', 'fill-color', c.monochromeWater);
+      }
+      if (this.map.getLayer('vegetation-fill')) {
+        this.map.setPaintProperty('vegetation-fill', 'fill-color', c.monochromeVegetation);
+      }
+      if (this.map.getLayer('green-space-fill')) {
+        this.map.setPaintProperty('green-space-fill', 'fill-color', c.monochromeGreenSpace);
+      }
+      if (this.map.getLayer('buildings-fill')) {
+        this.map.setPaintProperty('buildings-fill', 'fill-extrusion-color', c.monochromeBuilding);
+      }
+    } else {
+      if (this.map.getLayer('water-fill')) {
+        this.map.setPaintProperty('water-fill', 'fill-color', c.water);
+      }
+      if (this.map.getLayer('vegetation-fill')) {
+        this.map.setPaintProperty('vegetation-fill', 'fill-color', c.vegetation);
+      }
+      if (this.map.getLayer('green-space-fill')) {
+        this.map.setPaintProperty('green-space-fill', 'fill-color', c.greenSpace);
+      }
+    }
+
+    // Underground buildings
+    if (this.map.getLayer('buildings-underground-fill')) {
+      this.map.setPaintProperty('buildings-underground-fill', 'fill-color', c.undergroundFill);
+    }
+    if (this.map.getLayer('buildings-underground-outline')) {
+      this.map.setPaintProperty('buildings-underground-outline', 'line-color', c.undergroundOutline);
     }
   }
 
