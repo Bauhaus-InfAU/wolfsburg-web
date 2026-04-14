@@ -1,9 +1,11 @@
 import { useEffect, useRef } from 'react';
 import { useSimulation } from '@/hooks/useSimulation';
+import { useTheme } from '@/context/ThemeContext';
 
 export function MapCanvas() {
   const containerRef = useRef<HTMLDivElement>(null);
-  const { initializeMap, resizeMap } = useSimulation();
+  const { initializeMap, resizeMap, getMapView, isLoading } = useSimulation();
+  const { theme } = useTheme();
   const initializedRef = useRef(false);
 
   useEffect(() => {
@@ -12,6 +14,12 @@ export function MapCanvas() {
       initializeMap('map');
     }
   }, [initializeMap]);
+
+  // Apply dark/light mode to the MapLibre map whenever theme or loading state changes
+  useEffect(() => {
+    if (isLoading) return;
+    getMapView()?.setDarkMode(theme === 'dark');
+  }, [theme, isLoading, getMapView]);
 
   // Handle container resize
   useEffect(() => {

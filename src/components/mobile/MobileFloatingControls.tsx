@@ -1,6 +1,7 @@
 import { Button } from '@/components/ui/button';
 import { useSimulation } from '@/hooks/useSimulation';
 import type { MobilePanel } from '@/hooks/useMobileLayout';
+import { ThemeToggle } from '@/components/ThemeToggle';
 
 interface MobileFloatingControlsProps {
   onOpenPanel: (panel: Exclude<MobilePanel, 'none'>) => void;
@@ -50,6 +51,9 @@ export function MobileFloatingControls({ onOpenPanel }: MobileFloatingControlsPr
             <img src="/wolfsburg-web/icons/insights.svg" alt="" className="w-4 h-4 mr-1.5" />
             Insights
           </Button>
+
+          {/* Theme toggle */}
+          <ThemeToggle className="rounded-full shrink-0" />
         </div>
       </div>
     </div>
