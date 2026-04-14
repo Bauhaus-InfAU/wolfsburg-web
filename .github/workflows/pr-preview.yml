@@ -1,0 +1,80 @@
+name: PR Preview
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, closed]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  deploy-preview:
+    if: github.event.action != 'closed'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: rm -f package-lock.json && npm install
+
+      - name: Build
+        run: npm run build
+        env:
+          VITE_BASE_PATH: /wolfsburg-web/pr-${{ github.event.pull_request.number }}/
+
+      - name: Deploy to gh-pages subdirectory
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./dist
+          destination_dir: pr-${{ github.event.pull_request.number }}
+          keep_files: true
+
+      - name: Comment preview URL on PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const url = `https://${{ github.repository_owner }}.github.io/wolfsburg-web/pr-${{ github.event.pull_request.number }}/`;
+            const { data: comments } = await github.rest.issues.listComments({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+            });
+            const existing = comments.find(c => c.user.login === 'github-actions[bot]' && c.body.includes('Preview deployed'));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                comment_id: existing.id,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: `🚀 **Preview deployed:** ${url}`,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: `🚀 **Preview deployed:** ${url}`,
+              });
+            }
+
+  cleanup:
+    if: github.event.action == 'closed'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+
+      - name: Remove PR preview folder
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git rm -rf pr-${{ github.event.pull_request.number }} || true
+          git commit -m "Remove preview for PR #${{ github.event.pull_request.number }}" || true
+          git push

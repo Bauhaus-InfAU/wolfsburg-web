@@ -4,7 +4,7 @@ import path from 'path';
 
 export default defineConfig({
   plugins: [react()],
-  base: '/wolfsburg-web/',
+  base: process.env.VITE_BASE_PATH || '/wolfsburg-web/',
   build: {
     outDir: 'dist',
     assetsDir: 'assets',
