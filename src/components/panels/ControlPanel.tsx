@@ -9,6 +9,7 @@ import { CalculateButton } from './CalculateButton';
 import { TransportModeSelector } from './TransportModeSelector';
 import { SegmentEditor } from './SegmentEditor';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { PublicTransportPanel } from './PublicTransportPanel';
 
 const MIN_WIDTH = 300;
 const MAX_WIDTH = 500;
@@ -105,6 +106,11 @@ export function ControlPanel() {
             {/* Land Use Filters */}
             <CollapsibleSection title="Land Use Types" defaultOpen>
               <LandUseToggles />
+            </CollapsibleSection>
+
+            {/* Public Transport */}
+            <CollapsibleSection title="Public Transport" defaultOpen={false}>
+              <PublicTransportPanel />
             </CollapsibleSection>
           </div>
 
